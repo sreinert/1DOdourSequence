@@ -1,0 +1,7 @@
+texture_path: textures/
+speed_gain: 1
+walls_textures:
+  - random_dots.png
+  - big_dark_rectangles.png
+  - random_dots.png
+  - dark_triangles.png

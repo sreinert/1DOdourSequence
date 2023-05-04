@@ -1,0 +1,39 @@
+texture_path: textures/
+
+base_tunnel:
+    speed_gain: 1
+
+card:
+    position: [0.975, 0.9]
+    size: [0.05, 0.2]
+
+flip_tunnel:
+    sleep_time: 2
+    stimulus_onset: 12
+    neutral_texture: grey.png
+    io_module: nidaq_stub
+
+walls_sequence:
+  - random_dots.png
+  - random_dots.png
+  - stimulus_textures: [grating1.jpg, grating2.jpg]
+    triggers:
+      - []
+      - [{chan: Dev1/ctr2, delay: 0.16, duration: 1, duty_cycle: 0.4, freq: 20}, {chan: Dev2/port0/line0, onset: 3, duration: 0.2}]
+  - random_dots.png
+  - random_dots.png
+  - stimulus_textures: [white.png]
+    triggers:
+      - {chan: Dev2/port0/line1, extent: 10}
+  - random_dots.png
+  - random_dots.png
+  - stimulus_textures: [white.png]
+  - random_dots.png
+
+inputs:
+    speed: {chan: Dev1/ctr3, diameter: 0.197, error_value: 4000000000, pulses_per_rev: 1000}
+
+outputs:
+    speed: {chan: Dev2/ao2, max_value: 10.0, min_value: -10.0, scale: 1}
+    position: {chan: Dev3/ao1, max_value: 5.0, min_value: 0.0, scale: 5.0}
+    stim_id: {chan: Dev3/ao0, max_value: 5.0, min_value: 0.0, scale: 1.0}
