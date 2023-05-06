@@ -235,7 +235,47 @@ def make_trigger_task(tunnel, trigger_chan, delay=None, onset=None,
 
 
 def make_flip_sections(tunnel, walls_sequence, default_onset, io_module):
-    """instantiate a list of FlipSection objects, possibly interlinked"""
+    """_summary_
+    instantiate a list of FlipSection objects, possibly interlinked
+
+    Args:
+        tunnel (_type_): _description_
+        walls_sequence (list): written in yaml file. Looks like below. Each item is either str
+                               or dict.
+
+        walls_sequence:
+        - random_dots.png
+        - random_dots.png
+        - stimulus_textures: [grating1.jpg, grating2.jpg]
+            triggers:
+            - []
+            - [{chan: Dev1/ctr2, delay: 0.16, duration: 1, duty_cycle: 0.4, freq: 20}, {chan: Dev2/port0/line0, onset: 3, duration: 0.2}]
+
+        It would be
+        {'stimulus_textures': ['grating1.jpg', 'grating2.jpg'], 
+         'triggers': [
+                [], 
+                [{'chan': 'Dev1/ctr2', 'delay': 0.16, 'duration': 1, 'duty_cycle': 0.4, 'freq': 20}, 
+                {'chan': 'Dev2/port0/line0', 'onset': 3, 'duration': 0.2}]
+                ]}
+
+        The length of 'stimulus_textures' should match the length of 'triggers'.
+
+
+        default_onset (_type_): _description_
+        io_module (_type_): _description_
+
+    Raises:
+        ValueError: _description_
+        ValueError: _description_
+        ValueError: _description_
+        ValueError: _description_
+        ValueError: _description_
+        ValueError: _description_
+
+    Returns:
+        _type_: _description_
+    """
 
     load_texture = tunnel.loader.loadTexture
     flip_sections = []
@@ -245,7 +285,10 @@ def make_flip_sections(tunnel, walls_sequence, default_onset, io_module):
         if isinstance(walls, str):
             continue
 
+        assert isinstance(walls, dict)
+
         # load alternative textures
+        # if not found, return default
         stimulus_onset = walls.get('stimulus_onset', default_onset)
         stimulus_textures = [
             load_texture(t) for t in walls['stimulus_textures']
@@ -257,12 +300,13 @@ def make_flip_sections(tunnel, walls_sequence, default_onset, io_module):
 
         if 'triggers' in walls:
 
+            # one trigger for one texture
             if len(triggers) != n_stim:
                 raise ValueError("'triggers' should have {} elements."
                                  .format(n_stim))
 
             for i, trigger in enumerate(walls['triggers']):
-                if not trigger:
+                if not trigger:  # triggers may be [] or [{}] or [{},{}]
                     continue
 
                 trigger = [trigger] if isinstance(trigger, dict) else trigger
@@ -330,6 +374,18 @@ class FlipTunnel:
 
     def __init__(self, tunnel, card, flip_sections, inputs, outputs,
                  sleep_time, test_mode):
+        """_summary_
+
+        Args:
+            tunnel (_type_): _description_
+            card (_type_): _description_
+            flip_sections (_type_): _description_
+            inputs (_type_): _description_
+            outputs (tuple(key: AnalogOutput)): handles NIDAQ control, in this case is a reward valve. 
+                                    .write_float method uses daq.Task.WriteAnalogScalarF64
+            sleep_time (_type_): _description_
+            test_mode (_type_): _description_
+        """
 
         logging.basicConfig()
         self.logger = logging.getLogger(__name__)
@@ -341,6 +397,13 @@ class FlipTunnel:
         self.sleep_time = sleep_time
         self.inputs = inputs
         self.outputs = outputs
+
+        self.goalNums = 3
+        self.currentGoal = 0
+        self.goals = [[9, 18], [45, 54], [63, 72]]
+
+        # Add a task to check for the space bar being pressed
+        self.tunnel.taskMgr.add(self.checkSpaceBar, "CheckSpaceBarTask")
 
         for i, section in enumerate(self.flip_sections):
             self.logger.info('section_id %d, new stim %d', i, section.stim_id)
@@ -359,6 +422,25 @@ class FlipTunnel:
         self.tunnel.taskMgr.add(
             self.update_outputs_task, 'update_outputs_task', sort=10
         )
+
+    # def checkSpaceBar(self, task):
+    #     if self.tunnel.isPressed:
+    #         print("Pressed")
+    #         self.tunnel.isPressed = False
+    #     return Task.cont
+
+    def checkSpaceBar(self, task):
+        if self.tunnel.isPressed:
+            print("Pressed, current position is", self.tunnel.position)
+            self.tunnel.isPressed = False
+
+            goals = self.goals[self.currentGoal]
+            position = self.tunnel.position
+            if position > goals[0] and position < goals[1]:
+                print('correct! Getting reward...')
+                self.currentGoal = (self.currentGoal + 1) % self.goalNums
+                print('next goal is set')
+        return Task.cont
 
     def reset_tunnel_task(self, task):
         self.current_flip_sections = []
@@ -383,7 +465,16 @@ class FlipTunnel:
         self.card.setColor(*card_color)
 
         # end of trial update
-        if self.tunnel.end_reached and not self.tunnel.frozen:
+        # at each end of trial (or tunnel), water reward is given
+        # if self.tunnel.end_reached and not self.tunnel.frozen:
+        #     self.tunnel.freeze(True)
+        #     self.tunnel.taskMgr.doMethodLater(
+        #         self.sleep_time, self.reset_tunnel_task, 'reset_tunnel_task'
+        #     )
+
+        # print(self.tunnel.position)
+
+        if self.tunnel.position > 90 and not self.tunnel.frozen:
             self.tunnel.freeze(True)
             self.tunnel.taskMgr.doMethodLater(
                 self.sleep_time, self.reset_tunnel_task, 'reset_tunnel_task'

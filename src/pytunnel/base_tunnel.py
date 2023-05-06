@@ -50,6 +50,10 @@ class BaseTunnel(ShowBase):
         logging.basicConfig()
         self.logger = logging.getLogger(__name__)
 
+        self.isPressed = False
+
+        self.accept("space", self.spacePressed)
+
         self.disableMouse()
         self.setBackgroundColor(*bg_color)
         self.camera.setPos(0, 0, 4)
@@ -94,6 +98,9 @@ class BaseTunnel(ShowBase):
         self.accept('escape', sys.exit)
 
         self.taskMgr.add(self.move_camera_task, 'move_camera_task')
+
+    def spacePressed(self):
+        self.isPressed = True
 
     @property
     def length(self):
