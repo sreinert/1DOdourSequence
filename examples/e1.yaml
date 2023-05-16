@@ -1,7 +1,10 @@
 texture_path: textures/
 
 base_tunnel:
-    speed_gain: 0.01
+    speed_gain: 0.4
+    eye_fov:
+        fov: 30 
+        fov_shift: 15
 
 card:
     size: [0.2, 0.2]
@@ -12,6 +15,8 @@ flip_tunnel:
     stimulus_onset: 12
     neutral_texture: grey.png
     io_module: nidaq_stub
+
+
 
 walls_sequence:
   - random_dots.png

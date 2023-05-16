@@ -7,7 +7,7 @@ import logging
 
 from direct.showbase.ShowBase import ShowBase
 from direct.task import Task
-from panda3d.core import Camera, PerspectiveLens, NodePath
+from panda3d.core import Camera, PerspectiveLens, NodePath, WindowProperties
 
 from misc import default_main
 
@@ -17,13 +17,14 @@ WALL_SPACING = 9  # 20
 
 
 def split_display(cam1, cam2, fov, fov_shift=None):
+    print('split_display')
     # display the first camera on the left part of the screen
     dr = cam1.node().getDisplayRegion(0)
     dr.setDimensions(0, 0.5, 0, 1)
 
     # create a second camera and display it on half right of the window
-    dr2 = cam2.node().getDisplayRegion(0)
-    dr2.setDimensions(0.5, 1, 0, 1)
+    # dr2 = cam2.node().getDisplayRegion(0)
+    # dr2.setDimensions(0.5, 1, 0, 1)
 
     # turn the cameras so that they look on each side
     if fov_shift is None:
@@ -50,7 +51,7 @@ class BaseTunnel(ShowBase):
         logging.basicConfig()
         self.logger = logging.getLogger(__name__)
 
-        self.isPressed = False
+        self.isChallenged = False
 
         self.accept("space", self.spacePressed)
 
@@ -58,17 +59,33 @@ class BaseTunnel(ShowBase):
         self.setBackgroundColor(*bg_color)
         self.camera.setPos(0, 0, 4)
 
+        print(self.cam)
+
+        props = WindowProperties()
+        props.setSize(1920, 1080)
+        props.setOrigin(1920, 0)
+
+        # Open the window
+        self.firstWindow = self.openWindow(props=props, makeCamera=False)
+        dr = self.firstWindow.makeDisplayRegion()
+        self.cam = self.makeCamera(self.firstWindow)
+
+        self.secondWindow = self.openWindow(props=props, makeCamera=False)
+        dr = self.secondWindow.makeDisplayRegion()
+        self.cam2 = self.makeCamera(self.secondWindow)
+
         # split the window to display 2 cameras
-        if eye_fov is not None:
-            # create a second camera
-            self.cam2 = NodePath(Camera('cam2'))
-            self.win.makeDisplayRegion().setCamera(self.cam2)
+        # if eye_fov is not None:
+        # create a second camera
+        # self.cam2 = NodePath(Camera('cam2'))
+        # self.win.makeDisplayRegion().setCamera(self.cam2)
 
-            # same position as first camera
-            self.cam2.reparentTo(self.camera)
+        # same position as first camera
+        # self.cam.reparentTo(self.camera)
+        # self.cam2.reparentTo(self.camera)
 
-            # adjust display region, fov and angle
-            split_display(self.cam, self.cam2, **eye_fov)
+        # adjust display region, fov and angle
+        split_display(self.cam, self.cam2, **eye_fov)
 
         self.speed_gain = speed_gain
         self.speed = 0
@@ -100,7 +117,8 @@ class BaseTunnel(ShowBase):
         self.taskMgr.add(self.move_camera_task, 'move_camera_task')
 
     def spacePressed(self):
-        self.isPressed = True
+        # self.isPressed = True
+        self.isChallenged = True
 
     @property
     def length(self):

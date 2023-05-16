@@ -51,7 +51,7 @@ def default_main():
     panda3d_config = Filename.fromOsSpecific(args.panda3d_config)
     loadPrcFile(panda3d_config)
     with open(args.yaml_file, 'r') as fd:
-        options = yaml.load(fd)
+        options = yaml.load(fd, Loader=yaml.SafeLoader)
     texture_path = options.pop('texture_path', None)
     if texture_path:
         texture_path = Path(args.yaml_file).parent / texture_path

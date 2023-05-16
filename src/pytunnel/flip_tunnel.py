@@ -402,8 +402,10 @@ class FlipTunnel:
         self.currentGoal = 0
         self.goals = [[9, 18], [45, 54], [63, 72]]
 
+        self.ruleName = 'sequence'
+
         # Add a task to check for the space bar being pressed
-        self.tunnel.taskMgr.add(self.checkSpaceBar, "CheckSpaceBarTask")
+        self.tunnel.taskMgr.add(self.checkIfReward, "CheckIfRewardTask")
 
         for i, section in enumerate(self.flip_sections):
             self.logger.info('section_id %d, new stim %d', i, section.stim_id)
@@ -423,24 +425,55 @@ class FlipTunnel:
             self.update_outputs_task, 'update_outputs_task', sort=10
         )
 
+    # # def checkSpaceBar(self, task):
+
+    # #     if self.tunnel.isPressed:
+    # #         print("Pressed")
+    # #         self.tunnel.isPressed = False
+    # #     return Task.cont
+
     # def checkSpaceBar(self, task):
     #     if self.tunnel.isPressed:
-    #         print("Pressed")
+    #         print("Pressed, current position is", self.tunnel.position)
     #         self.tunnel.isPressed = False
+
+    #         goals = self.goals[self.currentGoal]
+    #         position = self.tunnel.position
+    #         if position > goals[0] and position < goals[1]:
+    #             print('correct! Getting reward...')
+    #             self.currentGoal = (self.currentGoal + 1) % self.goalNums
+    #             print('next goal is set')
     #     return Task.cont
-
-    def checkSpaceBar(self, task):
-        if self.tunnel.isPressed:
+    def checkIfReward(self, task):
+        if self.tunnel.isChallenged:
             print("Pressed, current position is", self.tunnel.position)
-            self.tunnel.isPressed = False
+            self.tunnel.isChallenged = False
+            if self.checkWithinGoal():
+                print('correct! Getting reward...')
+                self.triggerReward()
+                self.handleNextGoal()
+        return Task.cont
 
+    def triggerReward(self):
+        return
+
+    def checkWithinGoal(self):
+        if self.ruleName == 'sequence':
             goals = self.goals[self.currentGoal]
             position = self.tunnel.position
             if position > goals[0] and position < goals[1]:
-                print('correct! Getting reward...')
-                self.currentGoal = (self.currentGoal + 1) % self.goalNums
-                print('next goal is set')
-        return Task.cont
+                return True
+            return False
+        elif self.ruleName == 'all':
+            position = self.tunnel.position
+            for goal in self.goals:
+                if position > goals[0] and position < goals[1]:
+                    return True
+            return False
+
+    def handleNextGoal(self):
+        self.currentGoal = (self.currentGoal + 1) % self.goalNums
+        print('next goal is set')
 
     def reset_tunnel_task(self, task):
         self.current_flip_sections = []
