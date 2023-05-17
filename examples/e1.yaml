@@ -1,0 +1,52 @@
+texture_path: textures/
+
+base_tunnel:
+    speed_gain: 0.4
+    eye_fov:
+        fov: 30 
+        fov_shift: 15
+
+card:
+    size: [0.2, 0.2]
+    position: [0.9, 0.9]
+
+flip_tunnel:
+    sleep_time: 0
+    stimulus_onset: 12
+    neutral_texture: grey.png
+    io_module: nidaq_stub
+
+
+
+walls_sequence:
+  - random_dots.png
+  - random_dots.png
+  - grating1.jpg
+  - random_dots.png
+  - big_dark_rectangles.png
+  - random_dots.png
+  - grating2.jpg
+  - random_dots.png
+  - big_light_rectangles.png
+  - random_dots.png
+  - big_light_circles.png
+  - random_dots.png
+  - grating1.jpg
+  - random_dots.png
+  - big_dark_rectangles.png
+  - random_dots.png
+  - grating2.jpg
+  - random_dots.png
+  - big_light_rectangles.png
+  - random_dots.png
+  - big_light_circles.png
+  - random_dots.png
+  - grating1.jpg
+  # - random_dots.png
+  # - dark_triangles.png
+  
+inputs: 
+    {}
+    # speed: {chan: Dev1/ctr3, diameter: 0.197, pulses_per_rev: 1000, error_value: 4000000000, threshold: 0.001}
+
+outputs: {}

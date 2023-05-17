@@ -23,7 +23,8 @@ wheels/
 share/python-wheels/
 *.egg-info/
 .installed.cfg
-*.egg
+#*.egg
+*.blend
 MANIFEST
 
 # PyInstaller

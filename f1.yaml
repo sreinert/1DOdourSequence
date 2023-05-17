@@ -1,0 +1,60 @@
+texture_path: textures/
+
+base_tunnel:
+    speed_gain: 0.4
+    eye_fov:
+        fov: 30 
+        fov_shift: 15
+
+card:
+    size: [0.2, 0.2]
+    position: [0.9, 0.9]
+
+flip_tunnel:
+    sleep_time: 0
+    stimulus_onset: 12
+    neutral_texture: grey.png
+    io_module: nidaq
+
+daqChannel:
+  valve1: Dev1/port0/line7
+  spout1: {chan: Dev1/ai10, min_value: 0, max_value: 10, threshold: 0.5}
+
+walls_sequence:
+#   - random_dots.png
+#   - random_dots.png
+#   - grating1.jpg
+#   - random_dots.png
+#   - big_dark_rectangles.png
+#   - random_dots.png
+#   - grating2.jpg
+  - random_dots.png
+  - big_light_rectangles.png
+  - random_dots.png
+  - big_light_circles.png
+  - random_dots.png
+  - stimulus_textures: [grating1.jpg]
+    triggers:
+      - {chan: Dev1/port0/line7, extent: 10}
+  - grating1.jpg
+  - stimulus_textures: [grating2.jpg]
+    triggers:
+      - {chan: Dev1/port0/line7, onset: 3, duration: 0.2}
+#   - random_dots.png
+#   - big_dark_rectangles.png
+#   - random_dots.png
+#   - grating2.jpg
+#   - random_dots.png
+#   - big_light_rectangles.png
+#   - random_dots.png
+#   - big_light_circles.png
+#   - random_dots.png
+#   - grating1.jpg
+  # - random_dots.png
+  # - dark_triangles.png
+  
+inputs: 
+    # {}
+    speed: {chan: Dev1/ctr0, diameter: 0.197, pulses_per_rev: 1000, error_value: 4000000000, threshold: 0.001}
+
+outputs: {}
