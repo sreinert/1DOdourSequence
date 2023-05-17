@@ -4,6 +4,9 @@
 ## Introduction
 
 This repository contains scripts to run virtual corridors using Python 3.
+2023/05/17
+This repository is for use in behavioral box.
+Cloned from Shohei Furutachi's project.
 
 
 ## Installation
