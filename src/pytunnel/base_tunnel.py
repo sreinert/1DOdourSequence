@@ -51,9 +51,7 @@ class BaseTunnel(ShowBase):
         logging.basicConfig()
         self.logger = logging.getLogger(__name__)
 
-        self.isChallenged = False
-
-        self.accept("space", self.spacePressed)
+        
 
         self.disableMouse()
         self.setBackgroundColor(*bg_color)
@@ -117,9 +115,7 @@ class BaseTunnel(ShowBase):
 
         self.taskMgr.add(self.move_camera_task, 'move_camera_task')
 
-    def spacePressed(self):
-        # self.isPressed = True
-        self.isChallenged = True
+    
 
     @property
     def length(self):

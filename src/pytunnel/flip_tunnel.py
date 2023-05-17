@@ -11,7 +11,7 @@ from panda3d.core import CardMaker
 from base_tunnel import BaseTunnel
 from misc import default_main
 
-import pytunnel.nidaq as nidaq
+import nidaq as nidaq
 import time
 
 class Flipper:
@@ -392,6 +392,7 @@ class FlipTunnel:
         logging.basicConfig()
         self.logger = logging.getLogger(__name__)
 
+        
         self.tunnel = tunnel
         self.current_flip_sections = []
         self.flip_sections = flip_sections
@@ -405,6 +406,11 @@ class FlipTunnel:
         self.goals = [[9, 18], [45, 54], [63, 72]]
 
         self.ruleName = 'sequence'
+
+        self.isChallenged = False
+
+        self.tunnel.accept("space", self.spacePressed)
+
 
         # Add a task to check for the space bar being pressed
         self.tunnel.taskMgr.add(self.checkIfReward, "CheckIfRewardTask")
@@ -427,12 +433,19 @@ class FlipTunnel:
             self.update_outputs_task, 'update_outputs_task', sort=10
         )
 
-        self.valveController = nidaq.DigitalOutput(options['daqChannel']['valve1'])
+        self.tunnel.taskMgr.add(
+            self.update_piezo_task, 'update_piezo_task'
+        )
 
+        self.valveController = nidaq.DigitalOutput(options['daqChannel']['valve1'])
+        self.lickDetector = nidaq.AnalogInput(**options['daqChannel']['spout1'])
+    def spacePressed(self):
+            # self.isPressed = True
+            self.isChallenged = True
     def checkIfReward(self, task):
-        if self.tunnel.isChallenged:
+        if self.isChallenged:
             print("Pressed, current position is", self.tunnel.position)
-            self.tunnel.isChallenged = False
+            self.isChallenged = False
             if self.checkWithinGoal():
                 print('correct! Getting reward...')
                 self.triggerReward()
@@ -511,6 +524,10 @@ class FlipTunnel:
         self.logger.info("speed: %f", speed)
         self.tunnel.speed = speed
 
+        return Task.cont
+
+    def update_piezo_task(self, task):
+        self.isChallenged = self.lickDetector.read_float()
         return Task.cont
 
     def update_outputs_task(self, task):
