@@ -11,6 +11,8 @@ from panda3d.core import CardMaker
 from base_tunnel import BaseTunnel
 from misc import default_main
 
+import pytunnel.nidaq as nidaq
+import time
 
 class Flipper:
 
@@ -425,25 +427,8 @@ class FlipTunnel:
             self.update_outputs_task, 'update_outputs_task', sort=10
         )
 
-    # # def checkSpaceBar(self, task):
+        self.valveController = nidaq.DigitalOutput(options['daqChannel']['valve1'])
 
-    # #     if self.tunnel.isPressed:
-    # #         print("Pressed")
-    # #         self.tunnel.isPressed = False
-    # #     return Task.cont
-
-    # def checkSpaceBar(self, task):
-    #     if self.tunnel.isPressed:
-    #         print("Pressed, current position is", self.tunnel.position)
-    #         self.tunnel.isPressed = False
-
-    #         goals = self.goals[self.currentGoal]
-    #         position = self.tunnel.position
-    #         if position > goals[0] and position < goals[1]:
-    #             print('correct! Getting reward...')
-    #             self.currentGoal = (self.currentGoal + 1) % self.goalNums
-    #             print('next goal is set')
-    #     return Task.cont
     def checkIfReward(self, task):
         if self.tunnel.isChallenged:
             print("Pressed, current position is", self.tunnel.position)
@@ -455,6 +440,9 @@ class FlipTunnel:
         return Task.cont
 
     def triggerReward(self):
+        self.valveController.start()
+        time.sleep(0.1)
+        self.valveController.stop()
         return
 
     def checkWithinGoal(self):

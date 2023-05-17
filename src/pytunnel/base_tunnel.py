@@ -63,19 +63,20 @@ class BaseTunnel(ShowBase):
 
         props = WindowProperties()
         props.setSize(1920, 1080)
-        props.setOrigin(1920, 0)
+        props.setOrigin(1400, 0)
 
         # Open the window
         self.firstWindow = self.openWindow(props=props, makeCamera=False)
         dr = self.firstWindow.makeDisplayRegion()
         self.cam = self.makeCamera(self.firstWindow)
 
+        props.setOrigin(1400+1920, 0)
         self.secondWindow = self.openWindow(props=props, makeCamera=False)
         dr = self.secondWindow.makeDisplayRegion()
         self.cam2 = self.makeCamera(self.secondWindow)
 
         # split the window to display 2 cameras
-        # if eye_fov is not None:
+        if eye_fov is not None:
         # create a second camera
         # self.cam2 = NodePath(Camera('cam2'))
         # self.win.makeDisplayRegion().setCamera(self.cam2)
@@ -85,7 +86,7 @@ class BaseTunnel(ShowBase):
         # self.cam2.reparentTo(self.camera)
 
         # adjust display region, fov and angle
-        split_display(self.cam, self.cam2, **eye_fov)
+            split_display(self.cam, self.cam2, **eye_fov)
 
         self.speed_gain = speed_gain
         self.speed = 0
