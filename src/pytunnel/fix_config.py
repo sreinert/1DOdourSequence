@@ -40,6 +40,13 @@ if __name__ == "__main__":
         options_new['base_tunnel']['speed_gain'] = options.pop('speed_gain')
     if 'eye_fov' in options:
         options_new['base_tunnel']['eye_fov'] = options.pop('eye_fov')
+    if 'wall_spacing' in options:
+        options_new['base_tunnel']['wall_spacing'] = \
+            options.pop('wall_spacing')
+    if 'wall_length' in options:
+        options_new['base_tunnel']['wall_length'] = options.pop('wall_length')
+    if 'wall_model' in options:
+        options_new['base_tunnel']['wall_model'] = options.pop('wall_model')
 
     options_new['card'] = options.pop('card')
     options_new['flip_tunnel'] = OrderedDict()

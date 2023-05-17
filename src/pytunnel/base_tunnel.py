@@ -11,10 +11,6 @@ from panda3d.core import Camera, PerspectiveLens, NodePath, WindowProperties
 
 from misc import default_main
 
-WALL_MODEL = 'walls.egg'
-WALL_LENGTH = 4.5  # 10
-WALL_SPACING = 9  # 20
-
 
 def split_display(cam1, cam2, fov, fov_shift=None):
     print('split_display')
@@ -43,7 +39,7 @@ def split_display(cam1, cam2, fov, fov_shift=None):
 
 class BaseTunnel(ShowBase):
 
-    def __init__(self, walls_textures, speed_gain, test_mode,
+    def __init__(self, walls_textures, speed_gain, test_mode, options, wall_model, wall_length, wall_spacing,
                  bg_color=(0, 0, 0, 0), eye_fov=None, speed_gain_step=0.05):
 
         ShowBase.__init__(self)
@@ -51,40 +47,43 @@ class BaseTunnel(ShowBase):
         logging.basicConfig()
         self.logger = logging.getLogger(__name__)
 
-        
+        self.wall_spacing = wall_spacing
 
         self.disableMouse()
         self.setBackgroundColor(*bg_color)
         self.camera.setPos(0, 0, 4)
 
-        print(self.cam)
+        if 'monitor' in options and 'dual_monitor' in options['monitor'] and options['monitor']['dual_monitor']:
+            props = WindowProperties()
+            props.setSize(1920, 1080)
+            props.setOrigin(1400, 0)
 
-        props = WindowProperties()
-        props.setSize(1920, 1080)
-        props.setOrigin(1400, 0)
+            self.firstWindow = self.openWindow(
+                props=props, makeCamera=False)
+            dr = self.firstWindow.makeDisplayRegion()
+            self.cam = self.makeCamera(self.firstWindow)
 
-        # Open the window
-        self.firstWindow = self.openWindow(props=props, makeCamera=False)
-        dr = self.firstWindow.makeDisplayRegion()
-        self.cam = self.makeCamera(self.firstWindow)
+            props.setOrigin(1400+1920, 0)
+            self.secondWindow = self.openWindow(
+                props=props, makeCamera=False)
+            dr = self.secondWindow.makeDisplayRegion()
+            self.cam2 = self.makeCamera(self.secondWindow)
 
-        props.setOrigin(1400+1920, 0)
-        self.secondWindow = self.openWindow(props=props, makeCamera=False)
-        dr = self.secondWindow.makeDisplayRegion()
-        self.cam2 = self.makeCamera(self.secondWindow)
+            if eye_fov is not None:
+                split_display(self.cam, self.cam2, **eye_fov)
+        else:
+            # split the window to display 2 cameras
+            if eye_fov is not None:
+                # create a second camera
+                self.cam2 = NodePath(Camera('cam2'))
+                self.win.makeDisplayRegion().setCamera(self.cam2)
 
-        # split the window to display 2 cameras
-        if eye_fov is not None:
-        # create a second camera
-        # self.cam2 = NodePath(Camera('cam2'))
-        # self.win.makeDisplayRegion().setCamera(self.cam2)
+                # same position as first camera
+                self.cam.reparentTo(self.camera)
+                self.cam2.reparentTo(self.camera)
 
-        # same position as first camera
-        # self.cam.reparentTo(self.camera)
-        # self.cam2.reparentTo(self.camera)
-
-        # adjust display region, fov and angle
-            split_display(self.cam, self.cam2, **eye_fov)
+                # adjust display region, fov and angle
+                split_display(self.cam, self.cam2, **eye_fov)
 
         self.speed_gain = speed_gain
         self.speed = 0
@@ -93,11 +92,13 @@ class BaseTunnel(ShowBase):
         self.sections = []
         for i, texture_path in enumerate(walls_textures):
             texture = self.loader.loadTexture(texture_path)
-            self.sections.append(self.loader.loadModel(WALL_MODEL))
+            self.sections.append(self.loader.loadModel(
+                wall_model))
             self.sections[-1].reparentTo(self.render)
             self.sections[-1].setTexture(texture, 1)
-            self.sections[-1].setScale(2, WALL_LENGTH, 2)
-            self.sections[-1].setPos(0, i * WALL_SPACING, 4)
+            self.sections[-1].setScale(2,
+                                       wall_length, 2)
+            self.sections[-1].setPos(0, i * wall_spacing, 4)
 
         # add shortcuts for the test-mode
         if test_mode:
@@ -115,11 +116,9 @@ class BaseTunnel(ShowBase):
 
         self.taskMgr.add(self.move_camera_task, 'move_camera_task')
 
-    
-
     @property
     def length(self):
-        return WALL_SPACING * len(self.sections)
+        return self.wall_spacing * len(self.sections)
 
     @property
     def position(self):

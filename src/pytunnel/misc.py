@@ -54,8 +54,6 @@ def default_main():
         options = yaml.load(fd, Loader=yaml.SafeLoader)
     texture_path = options.pop('texture_path', None)
     if texture_path:
-        texture_path = Path(args.yaml_file).parent / texture_path
-        texture_path = Filename.fromOsSpecific(str(texture_path))
         getModelPath().appendDirectory(texture_path)
     set_root_logger(args.verbose)
     return options
