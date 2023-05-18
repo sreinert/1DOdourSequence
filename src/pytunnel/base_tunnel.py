@@ -52,18 +52,25 @@ class BaseTunnel(ShowBase):
         self.disableMouse()
         self.setBackgroundColor(*bg_color)
         self.camera.setPos(0, 0, 4)
+        
+        print(options['monitor'])
+        print(options['monitor']['monitor1']['width'])
+        print(options['monitor']['monitor2']['width'])
+        print(options['monitor']['monitor1']['width'] + options['monitor']['monitor2']['width'])
+
 
         if 'monitor' in options and 'dual_monitor' in options['monitor'] and options['monitor']['dual_monitor']:
             props = WindowProperties()
-            props.setSize(1920, 1080)
-            props.setOrigin(1400, 0)
+            props.setSize(options['monitor']['monitor2']['width'], options['monitor']['monitor2']['height'])
+            props.setOrigin(int(options['monitor']['monitor1']['width']), 0)
 
             self.firstWindow = self.openWindow(
                 props=props, makeCamera=False)
             dr = self.firstWindow.makeDisplayRegion()
             self.cam = self.makeCamera(self.firstWindow)
 
-            props.setOrigin(1400+1920, 0)
+            props.setSize(options['monitor']['monitor3']['width'], options['monitor']['monitor3']['height'])
+            props.setOrigin(options['monitor']['monitor1']['width'] + options['monitor']['monitor2']['width'], 0)
             self.secondWindow = self.openWindow(
                 props=props, makeCamera=False)
             dr = self.secondWindow.makeDisplayRegion()

@@ -1,7 +1,7 @@
 texture_path: examples/textures/
 
 base_tunnel:
-    speed_gain: 0.4
+    speed_gain: 0.1
     eye_fov:
         fov: 30 
         fov_shift: 15
@@ -21,7 +21,13 @@ flip_tunnel:
     length: 90
 
 monitor:
-    dual_monitor: False
+    dual_monitor: True
+    monitor1:
+        {width: 300}
+    monitor2:
+        {width: 320, height: 180}
+    monitor3:
+        {width: 320, height: 180}
 
 sequence_task:
     rulename: 'sequence'

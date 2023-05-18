@@ -379,7 +379,7 @@ class FlipTunnel:
     def update_piezo_task(self, task):
 
         self.isChallenged = self.lickDetector.read_float()
-        print('self.isChallenged', self.isChallenged)
+        # print('self.isChallenged', self.isChallenged)
         return Task.cont
 
     def update_outputs_task(self, task):

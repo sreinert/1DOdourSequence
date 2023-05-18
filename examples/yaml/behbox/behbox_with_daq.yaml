@@ -3,8 +3,8 @@ texture_path: examples/textures/
 base_tunnel:
     speed_gain: 0.4
     eye_fov:
-        fov: 30 
-        fov_shift: 15
+        fov: 100 
+        fov_shift: 66
     wall_model: 'walls.egg'
     wall_length: 4.5
     wall_spacing: 9
@@ -21,7 +21,18 @@ flip_tunnel:
     length: 90
 
 monitor:
-    dual_monitor: False
+    dual_monitor: True
+    monitor1:
+        width: 1366
+    monitor2:
+        width: 1920
+        height: 1080
+    monitor3:
+        width: 1920
+        height: 1080
+
+logger:
+    filename: 'D:\masahiro\sample.csv'
 
 sequence_task:
     rulename: 'sequence'
