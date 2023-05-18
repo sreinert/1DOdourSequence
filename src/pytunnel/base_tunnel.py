@@ -12,11 +12,13 @@ from panda3d.core import Camera, PerspectiveLens, NodePath, WindowProperties
 from misc import default_main
 
 
-def split_display(cam1, cam2, fov, fov_shift=None):
+def split_display(cam1, cam2, fov, fov_shift=None, dual_monitor=False):
     print('split_display')
     # display the first camera on the left part of the screen
+    
     dr = cam1.node().getDisplayRegion(0)
-    dr.setDimensions(0, 0.5, 0, 1)
+    if not dual_monitor:
+        dr.setDimensions(0, 0.5, 0, 1)
 
     # create a second camera and display it on half right of the window
     # dr2 = cam2.node().getDisplayRegion(0)
@@ -67,7 +69,7 @@ class BaseTunnel(ShowBase):
             self.firstWindow = self.openWindow(
                 props=props, makeCamera=False)
             dr = self.firstWindow.makeDisplayRegion()
-            self.cam = self.makeCamera(self.firstWindow)
+            self.cam1 = self.makeCamera(self.firstWindow)
 
             props.setSize(options['monitor']['monitor3']['width'], options['monitor']['monitor3']['height'])
             props.setOrigin(options['monitor']['monitor1']['width'] + options['monitor']['monitor2']['width'], 0)
@@ -77,7 +79,7 @@ class BaseTunnel(ShowBase):
             self.cam2 = self.makeCamera(self.secondWindow)
 
             if eye_fov is not None:
-                split_display(self.cam, self.cam2, **eye_fov)
+                split_display(self.cam1, self.cam2, **eye_fov, dual_monitor=True)
         else:
             # split the window to display 2 cameras
             if eye_fov is not None:

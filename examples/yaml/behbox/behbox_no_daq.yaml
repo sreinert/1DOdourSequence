@@ -34,7 +34,7 @@ sequence_task:
 
 walls_sequence:
   - random_dots.png
-  - grey.png
+  - random_dots.png
   - grating1.jpg
   - random_dots.png
   - big_dark_rectangles.png
