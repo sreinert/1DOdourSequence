@@ -42,7 +42,7 @@ daqChannel:
   spout1: {chan: Dev1/ai10, min_value: 0, max_value: 10, threshold: 0.5}
   
 walls_sequence:
-  - random_dots.png
+#   - random_dots.png
   - random_dots.png
   - grating1.jpg
   - random_dots.png

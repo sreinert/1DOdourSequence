@@ -216,7 +216,8 @@ class FlipTunnel:
 
         self.goalNums = 3
         self.currentGoal = 0
-        self.goals = [[9, 18], [45, 54], [63, 72]]
+        # self.goals = [[9, 18], [45, 54], [63, 72]]
+        self.goals = [[0, 9], [36, 45], [54, 63]]
 
         self.ruleName = options['sequence_task']['rulename']
 
