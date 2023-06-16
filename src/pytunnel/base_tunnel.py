@@ -53,7 +53,7 @@ class BaseTunnel(ShowBase):
 
         self.disableMouse()
         self.setBackgroundColor(*bg_color)
-        self.camera.setPos(0, 0, 4)
+        self.camera.setPos(0, options['flip_tunnel']['margin_start'], 4)
         
         print(options['monitor'])
         print(options['monitor']['monitor1']['width'])
@@ -165,9 +165,9 @@ class BaseTunnel(ShowBase):
                          self.position, self.speed, self.speed_gain)
         return Task.cont
 
-    def reset_camera(self):
+    def reset_camera(self, position=0):
         z_pos = self.camera.getPos()[2]
-        self.camera.setPos(0, 0, z_pos)
+        self.camera.setPos(0, position, z_pos)
 
 
 if __name__ == "__main__":

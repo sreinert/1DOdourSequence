@@ -217,7 +217,8 @@ class FlipTunnel:
         self.goalNums = 3
         self.currentGoal = 0
         # self.goals = [[9, 18], [45, 54], [63, 72]]
-        self.goals = [[0, 9], [36, 45], [54, 63]]
+        # self.goals = [[0, 9], [36, 45], [54, 63]]
+        self.goals = options['flip_tunnel']['goals']
 
         self.ruleName = options['sequence_task']['rulename']
 
@@ -228,6 +229,13 @@ class FlipTunnel:
         self.isLogging = False
 
         self.triggeResetPosition = options['flip_tunnel']['length']
+        try:
+            self.triggeResetPositionStart = options['flip_tunnel']['margin_start']
+            # self.reset_camera(self.triggeResetPositionStart)
+        except:
+            self.triggeResetPositionStart = 0
+        
+        self.flip_tunnel_options = options['flip_tunnel']
 
         self.create_nidaq_controller(options)
 
@@ -330,7 +338,15 @@ class FlipTunnel:
             section.reset()
             self.logger.info('section_id %d, new stim %d', i, section.stim_id)
         self.tunnel.freeze(False)
-        self.tunnel.reset_camera()
+        self.tunnel.reset_camera(position=self.triggeResetPositionStart)
+        
+    def reset_tunnel2end_task(self, task):
+        self.current_flip_sections = []
+        for i, section in enumerate(self.flip_sections):
+            section.reset()
+            self.logger.info('section_id %d, new stim %d', i, section.stim_id)
+        self.tunnel.freeze(False)
+        self.tunnel.reset_camera(position=self.triggeResetPosition)
 
     def update_tunnel_task(self, task):
         # update grating sections, if mouse is in their onset/offset part
@@ -350,6 +366,12 @@ class FlipTunnel:
             self.tunnel.freeze(True)
             self.tunnel.taskMgr.doMethodLater(
                 self.sleep_time, self.reset_tunnel_task, 'reset_tunnel_task'
+            )
+            
+        if self.tunnel.position < self.triggeResetPositionStart and not self.tunnel.frozen:
+            self.tunnel.freeze(True)
+            self.tunnel.taskMgr.doMethodLater(
+                self.sleep_time, self.reset_tunnel2end_task, 'reset_tunnel2end_task'
             )
 
         return Task.cont

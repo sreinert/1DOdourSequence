@@ -18,7 +18,10 @@ flip_tunnel:
     stimulus_onset: 12
     neutral_texture: grey.png
     io_module: nidaq
-    length: 90
+    length: 99
+    margin_start: 9
+    goals: [[9, 18], [45, 54], [63, 72]]
+    # goals: [[0, 9], [36, 45], [54, 63]]
 
 monitor:
     dual_monitor: True
@@ -42,7 +45,7 @@ daqChannel:
   spout1: {chan: Dev1/ai10, min_value: 0, max_value: 10, threshold: 0.5}
   
 walls_sequence:
-#   - random_dots.png
+  - big_light_circles.png
   - random_dots.png
   - grating1.jpg
   - random_dots.png
