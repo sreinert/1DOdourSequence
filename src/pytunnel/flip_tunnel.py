@@ -213,12 +213,18 @@ class FlipTunnel:
         self.outputs = outputs
 
         self.globalClock = ClockObject()
+        
+        self.total_forward_run_distance = 0
 
-        self.goalNums = 3
-        self.currentGoal = 0
-        # self.goals = [[9, 18], [45, 54], [63, 72]]
+        
         # self.goals = [[0, 9], [36, 45], [54, 63]]
-        self.goals = options['flip_tunnel']['goals']
+        try:
+            self.goals = options['flip_tunnel']['goals']
+        except:
+            self.goals = [[0, 9]]
+        self.goalNums = len(self.goals)
+        self.currentGoal = 1
+        self.currentGoalIdx = 0
 
         self.ruleName = options['sequence_task']['rulename']
 
@@ -236,6 +242,7 @@ class FlipTunnel:
             self.triggeResetPositionStart = 0
         
         self.flip_tunnel_options = options['flip_tunnel']
+        self.flip_tunnel_options['corridor_len'] = options['flip_tunnel']['length'] - options['flip_tunnel']['margin_start']
 
         self.create_nidaq_controller(options)
 
@@ -294,7 +301,7 @@ class FlipTunnel:
 
     def checkIfReward(self, task):
         if self.isChallenged:
-            print("Pressed, current position is", self.tunnel.position)
+            print("challenged, current position is", self.tunnel.position)
             self.isChallenged = False
             self.wasChallenged = True
             if self.checkWithinGoal():
@@ -302,35 +309,50 @@ class FlipTunnel:
                 self.wasRewarded = True
                 self.triggerReward()
                 self.handleNextGoal()
+        if self.ruleName == 'run-auto':
+            if self.tunnel.position + self.total_forward_run_distance > self.currentGoal:
+                self.wasRewarded = True
+                self.triggerReward()
+                self.handleNextGoal()
+                
         return Task.cont
 
     def triggerReward(self):
         if self.isNIDaq:
             self.valveController.start()
-            time.sleep(0.1)
+            time.sleep(0.2)
             self.valveController.stop()
 
         else:
-            time.sleep(0.1)
+            time.sleep(0.2)
             print('reward is triggered')
 
     def checkWithinGoal(self):
         if self.ruleName == 'sequence':
-            goals = self.goals[self.currentGoal]
+            goals = self.goals[self.currentGoalIdx]
             position = self.tunnel.position
             if position > goals[0] and position < goals[1]:
                 return True
             return False
         elif self.ruleName == 'all':
             position = self.tunnel.position
-            for goal in self.goals:
+            for goals in self.goals:
                 if position > goals[0] and position < goals[1]:
                     return True
             return False
+        elif self.ruleName == 'run-lick':
+            print(self.tunnel.position + self.total_forward_run_distance,  self.currentGoal)
+            if self.tunnel.position + self.total_forward_run_distance > self.currentGoal:
+                return True
+            return False
 
     def handleNextGoal(self):
-        self.currentGoal = (self.currentGoal + 1) % self.goalNums
-        print('next goal is set')
+        if self.ruleName == 'sequence':
+            self.currentGoalIdx = (self.currentGoalIdx + 1) % self.goalNums
+        elif self.ruleName == 'run-auto' or self.ruleName == 'run-lick':
+            self.currentGoal = self.currentGoal + np.random.randint(5, 15)
+
+        print('next goal is set to {}'.format(self.currentGoal))
 
     def reset_tunnel_task(self, task):
         self.current_flip_sections = []
@@ -363,12 +385,14 @@ class FlipTunnel:
         self.card.setColor(*card_color)
 
         if self.tunnel.position > self.triggeResetPosition and not self.tunnel.frozen:
+            self.total_forward_run_distance += self.flip_tunnel_options['corridor_len']
             self.tunnel.freeze(True)
             self.tunnel.taskMgr.doMethodLater(
                 self.sleep_time, self.reset_tunnel_task, 'reset_tunnel_task'
             )
             
         if self.tunnel.position < self.triggeResetPositionStart and not self.tunnel.frozen:
+            self.total_forward_run_distance -= self.flip_tunnel_options['corridor_len']
             self.tunnel.freeze(True)
             self.tunnel.taskMgr.doMethodLater(
                 self.sleep_time, self.reset_tunnel2end_task, 'reset_tunnel2end_task'

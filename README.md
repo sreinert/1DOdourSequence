@@ -8,6 +8,11 @@ This repository contains scripts to run virtual corridors using Python 3.
 This repository is for use in behavioral box.
 Cloned from Shohei Furutachi's project.
 
+# Rules
+`sequence`
+`run-auto`: reward is given when the mouse has ran random length in the corridor.
+`run-lick`: reward is given when the mouse has licked after running more than a random length in the corridor.
+
 
 ## Installation
 
