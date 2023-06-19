@@ -1,7 +1,7 @@
 texture_path: examples/textures/
 
 base_tunnel:
-    speed_gain: 0.01
+    speed_gain: 0.04
     eye_fov:
         fov: 100 
         fov_shift: 66
@@ -20,7 +20,9 @@ flip_tunnel:
     io_module: nidaq_stub
     length: 99
     margin_start: 9
-    
+    reward_distance: 18
+    initial_goal: 18
+
 monitor:
     dual_monitor: True
     monitor1:
@@ -32,37 +34,36 @@ monitor:
         width: 400
         height: 300
 
-logger:
-    foldername: '/home/masahiron/data/1dseq/MN_1099796/sample'
+# logger:
+#     filename: '/home/masahiron/data'
 
 sequence_task:
-    rulename: 'run-auto'
+    rulename: 'protocol1_lv1'
 
 walls_sequence:
+  - big_light_circles.png
   - random_dots.png
+  - grating1.jpg
   - random_dots.png
+  - big_dark_rectangles.png
   - random_dots.png
+  - grating2.jpg
   - random_dots.png
+  - big_light_rectangles.png
   - random_dots.png
+  - big_light_circles.png
   - random_dots.png
+  - grating1.jpg
   - random_dots.png
+  - big_dark_rectangles.png
   - random_dots.png
+  - grating2.jpg
   - random_dots.png
+  - big_light_rectangles.png
   - random_dots.png
+  - big_light_circles.png
   - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
+  - grating1.jpg
   
 inputs: {}
 

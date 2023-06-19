@@ -2,6 +2,7 @@
 
 from __future__ import division, print_function
 import csv
+import os
 
 import logging
 from pathlib import Path
@@ -212,7 +213,7 @@ class FlipTunnel:
         self.inputs = inputs
         self.outputs = outputs
 
-        self.globalClock = ClockObject()
+        self.globalClock = ClockObject.getGlobalClock()
         
         self.total_forward_run_distance = 0
 
@@ -223,7 +224,10 @@ class FlipTunnel:
         except:
             self.goals = [[0, 9]]
         self.goalNums = len(self.goals)
-        self.currentGoal = 1
+        try:
+            self.currentGoal = options['flip_tunnel']['initial_goal']
+        except:
+            self.currentGoal = 0
         self.currentGoalIdx = 0
 
         self.ruleName = options['sequence_task']['rulename']
@@ -243,12 +247,13 @@ class FlipTunnel:
         
         self.flip_tunnel_options = options['flip_tunnel']
         self.flip_tunnel_options['corridor_len'] = options['flip_tunnel']['length'] - options['flip_tunnel']['margin_start']
+        print('corridor length is ', self.flip_tunnel_options['corridor_len'])
 
         self.create_nidaq_controller(options)
 
         try:
-            filename = options['logger']['filename']
-            self.setup_logfile(filename)
+            foldername = options['logger']['foldername']
+            self.setup_logfile(foldername)
             self.isLogging = True
         except:
             self.isLogging = False
@@ -284,17 +289,34 @@ class FlipTunnel:
 
         if self.isLogging:
             self.tunnel.taskMgr.add(
-                self.logging_task, 'logging_task'
+                self.position_logging_task, 'position_logging_task'
+            )
+            self.tunnel.taskMgr.add(
+                self.event_logging_task, 'event_logging_task'
             )
 
-    def setup_logfile(self, filename):
-        # Check if the file already exists, if not, create a new file and write the header
-        file_exists = Path(filename).is_file()
-        file = open(filename, 'a', newline='')
-        self.writer = csv.writer(file)
-        if not file_exists:
-            self.writer.writerow(
-                ["Time", "Position", "Is Licked", "Is Rewarded"])
+
+    def setup_logfile(self, foldername):
+        # Check if the directory exists, if not, create it
+        if not os.path.exists(foldername):
+            os.makedirs(foldername)
+        
+        # Setup position log file
+        position_filename = os.path.join(foldername, 'position_log.csv')
+        position_file_exists = Path(position_filename).is_file()
+        position_file = open(position_filename, 'a', newline='')
+        self.position_writer = csv.writer(position_file)
+        if not position_file_exists:
+            self.position_writer.writerow(["Time", "Position", "Event"])
+
+        # Setup event log file
+        event_filename = os.path.join(foldername, 'event_log.csv')
+        event_file_exists = Path(event_filename).is_file()
+        event_file = open(event_filename, 'a', newline='')
+        self.event_writer = csv.writer(event_file)
+        if not event_file_exists:
+            self.event_writer.writerow(["Time", "Event"])
+
 
     def spacePressed(self):
         self.isChallenged = True
@@ -309,8 +331,13 @@ class FlipTunnel:
                 self.wasRewarded = True
                 self.triggerReward()
                 self.handleNextGoal()
-        if self.ruleName == 'run-auto':
-            if self.tunnel.position + self.total_forward_run_distance > self.currentGoal:
+        if self.ruleName in ['run-auto', 'protocol1_lv1'] :
+            if self.tunnel.position % 90 + self.total_forward_run_distance > self.currentGoal:
+                # position will be something like 99.0011 before being 9.0011, and it will cause bugs.
+                # to prevent this, always subtract 90 if it is larger than 90
+                print(self.tunnel.position)
+                print(self.total_forward_run_distance)
+                print(self.currentGoal)
                 self.wasRewarded = True
                 self.triggerReward()
                 self.handleNextGoal()
@@ -334,13 +361,21 @@ class FlipTunnel:
             if position > goals[0] and position < goals[1]:
                 return True
             return False
-        elif self.ruleName == 'all':
+        elif self.ruleName in ['all']:
             position = self.tunnel.position
             for goals in self.goals:
                 if position > goals[0] and position < goals[1]:
                     return True
             return False
-        elif self.ruleName == 'run-lick':
+        elif self.ruleName in ['protocol1_lv2']:
+            position = self.tunnel.position
+            if self.tunnel.position + self.total_forward_run_distance > self.currentGoal:
+                for goals in self.goals:
+                    if position > goals[0] and position < goals[1]:
+                        
+                        return True
+            return False
+        elif self.ruleName in ['run-lick']:
             print(self.tunnel.position + self.total_forward_run_distance,  self.currentGoal)
             if self.tunnel.position + self.total_forward_run_distance > self.currentGoal:
                 return True
@@ -350,7 +385,9 @@ class FlipTunnel:
         if self.ruleName == 'sequence':
             self.currentGoalIdx = (self.currentGoalIdx + 1) % self.goalNums
         elif self.ruleName == 'run-auto' or self.ruleName == 'run-lick':
-            self.currentGoal = self.currentGoal + np.random.randint(5, 15)
+            self.currentGoal = self.currentGoal + np.random.randint(10) + self.flip_tunnel_options['reward_distance']
+        elif self.ruleName in ['protocol1_lv1', 'protocol1_lv2']:
+            self.currentGoal = self.currentGoal + self.flip_tunnel_options['reward_distance']
 
         print('next goal is set to {}'.format(self.currentGoal))
 
@@ -450,21 +487,39 @@ class FlipTunnel:
 
     def run(self):
         self.tunnel.run()
+        
 
-    def logging_task(self, task):
-        # save data to csv
-        # print('logging task')
-        time = self.globalClock.getFrameTime()
+
+    def position_logging_task(self, task):
+        if not hasattr(task, 'next_log_time'):
+            task.next_log_time = self.globalClock.getFrameTime()
+
+        current_time = self.globalClock.getFrameTime()
+
+        if current_time < task.next_log_time:
+            return Task.cont
+
+        task.next_log_time += 1.0 / 60.0  # Schedule the next log in 1/60th of a second
+
         position = self.tunnel.position
-        is_challenged = int(self.wasChallenged)
-        is_rewarded = int(self.wasRewarded)
+        self.shared_timestamp = current_time  # Save the timestamp for the event logging task
+        self.position_writer.writerow([current_time, position, ''])
 
-        # print([time, position, is_challenged, is_rewarded])
+        return Task.cont
 
-        # Write the data row
-        self.writer.writerow([time, position, is_challenged, is_rewarded])
+    def event_logging_task(self, task):
+        if self.wasChallenged:
+            print('evemt logger was chalenged')
+            print([self.shared_timestamp, "challenged"])
+            self.position_writer.writerow([self.shared_timestamp, -1, "challenged"])
+            self.event_writer.writerow([self.shared_timestamp, "challenged"])
+            self.wasChallenged = False
 
-        self.wasRewarded = False
-        self.wasChallenged = False
+        if self.wasRewarded:
+            print('event logger was rewarded')
+            self.position_writer.writerow([self.shared_timestamp, -1, "rewarded"])
+            self.event_writer.writerow([self.shared_timestamp, "rewarded"])
+            print([self.shared_timestamp, "rewarded"])
+            self.wasRewarded = False
 
-        return Task.cont  # Continue the task
+        return Task.cont
