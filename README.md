@@ -3,7 +3,9 @@
 
 ## Introduction
 
-This repository contains scripts to run virtual corridors using Python 3.
+This repository contains scripts to run virtual corridors using Python 3. It is a sequential navigation task, where mice have to navigate through virtual corridor to reach landmarks in a specific order.
+For more details, check [this Notion page](https://polyester-hound-854.notion.site/task-detail-c25802c77d3243f28e957619c238a80c?pvs=4)
+
 2023/05/17
 This repository is for use in behavioral box.
 Cloned from Shohei Furutachi's project.
@@ -13,12 +15,13 @@ Cloned from Shohei Furutachi's project.
 `run-auto`: reward is given when the mouse has ran random length in the corridor.
 `run-lick`: reward is given when the mouse has licked after running more than a random length in the corridor.
 
+For details, check [this Notion page](https://polyester-hound-854.notion.site/task-detail-c25802c77d3243f28e957619c238a80c?pvs=4)
 
 ## Installation
 
 To retrieve the code, clone the repository using git:
 ```
-git clone https://bitbucket.org/lasermouse/pytunnel 
+git clone git@github.com:MasahiroNakano/1DSequenceTaskPy.git
 ```
 
 To install dependencies, I recommend that you first create a virtual
@@ -49,19 +52,10 @@ To start a virtual corridor you need to:
 For example, to run one the example file for the basic tunnel:
 ```bash
 conda activate pytunnel_venv
-python src/pytunnel/flip_tunnel.py examples/flip_tunnel_example.yaml
+python src/pytunnel/main.py examples/yaml/protocol_1/protocol_1_level_1.ymal'
 ```
 
 To know more about the options of a tunnel script, use the `--help`/`-h` option, e.g.
 ```bash
 python src/pytunnel/flip_tunnel.py --help
 ```
-
-
-## TODOs
-
-- `TODO` document tunnel configuration
-- `TODO` document texture creation
-- `TODO` document the code
-- `TODO` give credit to `Aris`
-- `TODO` add a licence
