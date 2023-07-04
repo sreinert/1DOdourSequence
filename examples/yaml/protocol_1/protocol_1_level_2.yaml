@@ -23,7 +23,8 @@ flip_tunnel:
     reward_distance: 9
     # goals: [[9, 18], [27, 36], [45, 54], [63, 72], [81, 90]]
     goals: [[13.5, 22.5], [31.5, 40.5], [49.5, 58.5], [67.5, 76.5], [85.5, 94.5]]
-    
+    manual_reward_with_space: True
+
 monitor:
     dual_monitor: True
     monitor1:
@@ -35,15 +36,15 @@ monitor:
         width: 1920
         height: 1080
 
-# logger:
-#     foldername: 'D:\masahiro\MN_1099796\230619'
+logger:
+    foldername: 'D:\masahiro\MN_1099797\230703_lv2'
 
 sequence_task:
     rulename: 'protocol1_lv2'
 
 daqChannel:
   valve1: Dev1/port0/line7
-  spout1: {chan: Dev1/ai10, min_value: 0, max_value: 10, threshold: 0.5}
+  spout1: {chan: Dev1/ai10, min_value: 0, max_value: 10, threshold: 0.1}
   
 walls_sequence:
   - big_light_circles.png
