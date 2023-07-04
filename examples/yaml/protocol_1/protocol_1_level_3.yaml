@@ -1,7 +1,7 @@
 texture_path: examples/textures/
 
 base_tunnel:
-    speed_gain: 0.4
+    speed_gain: 0.7
     eye_fov:
         fov: 100 
         fov_shift: 66
@@ -25,6 +25,7 @@ flip_tunnel:
     # goals: [[13.5, 22.5], [31.5, 40.5], [67.5, 76.5]]
     goals: [[10, 26], [28, 44], [64, 80]]
     manual_reward_with_space: True
+    lock_corridor_reward: False
 
 monitor:
     dual_monitor: True
@@ -38,7 +39,7 @@ monitor:
         height: 1080
 
 logger:
-    foldername: 'D:\masahiro\MN_1099797\230704'
+    foldername: 'D:\masahiro\MN_1099796\230704_2'
 
 sequence_task:
     rulename: 'sequence'

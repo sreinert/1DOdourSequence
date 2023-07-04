@@ -37,7 +37,7 @@ monitor:
         height: 1080
 
 logger:
-    foldername: 'D:\masahiro\MN_1099797\230703_lv2'
+    foldername: 'D:\masahiro\MN_1099796\230704_lv2'
 
 sequence_task:
     rulename: 'protocol1_lv2'

@@ -212,6 +212,11 @@ class FlipTunnel:
         self.sleep_time = sleep_time
         self.inputs = inputs
         self.outputs = outputs
+        
+        try:
+            self.lock_corridor_reward = options['flip_tunnel']['lock_corridor_reward']
+        except:
+            self.lock_corridor_reward = True
 
         self.globalClock = ClockObject.getGlobalClock()
         
@@ -365,8 +370,13 @@ class FlipTunnel:
     def triggerReward(self):
         if self.isNIDaq:
             self.valveController.start()
-            time.sleep(0.2)
-            self.valveController.stop()
+            if self.lock_corridor_reward:
+                time.sleep(0.2)
+                self.valveController.stop()
+            else:
+                self.tunnel.taskMgr.doMethodLater(
+                    0.2, self.stop_valve_task, 'stop_valve_task'
+                )
 
         else:
             time.sleep(0.2)
@@ -417,6 +427,10 @@ class FlipTunnel:
         self.tunnel.freeze(False)
         self.tunnel.reset_camera(position=self.triggeResetPositionStart)
         self.total_forward_run_distance += self.flip_tunnel_options['corridor_len']
+    
+    def stop_valve_task(self, task):
+        self.valveController.stop()
+        
         
     def reset_tunnel2end_task(self, task):
         self.current_flip_sections = []
