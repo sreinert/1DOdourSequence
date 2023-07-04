@@ -57,3 +57,17 @@ def default_main():
         getModelPath().appendDirectory(texture_path)
     set_root_logger(args.verbose)
     return options
+
+
+
+def save_yaml(options):
+    try:
+        save_dir = Path(options['logger']['foldername'])
+        save_dir.mkdir()
+        file_name = 'config.yaml'
+        file_path = str(save_dir / file_name)
+        
+        with open(file_path, 'w') as file:
+            yaml.dump(options, file)
+    except KeyError:
+        print("foldername not specified. this session will not be saved/logged...")

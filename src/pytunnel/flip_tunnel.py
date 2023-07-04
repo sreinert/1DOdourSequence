@@ -216,6 +216,9 @@ class FlipTunnel:
         self.globalClock = ClockObject.getGlobalClock()
         
         self.total_forward_run_distance = 0
+        
+        # This will make the later analysis so much easier
+        self.sample_i = 0
 
         
         # self.goals = [[0, 9], [36, 45], [54, 63]]
@@ -229,12 +232,18 @@ class FlipTunnel:
         except:
             self.currentGoal = 0
         self.currentGoalIdx = 0
+        
+        try:
+            manual_reward_with_space = options['flip_tunnel']['manual_reward_with_space']
+        except:
+            manual_reward_with_space = False
 
         self.ruleName = options['sequence_task']['rulename']
 
         self.isChallenged = False
         self.wasChallenged = False
         self.wasRewarded = False
+        self.wasManuallyRewarded = False
 
         self.isLogging = False
 
@@ -260,6 +269,8 @@ class FlipTunnel:
 
         if test_mode:
             self.tunnel.accept("space", self.spacePressed)
+        if manual_reward_with_space:
+            self.tunnel.accept("space", self.manualReward)
 
         # Add a task to check for the space bar being pressed
         self.tunnel.taskMgr.add(self.checkIfReward, "CheckIfRewardTask")
@@ -291,9 +302,9 @@ class FlipTunnel:
             self.tunnel.taskMgr.add(
                 self.position_logging_task, 'position_logging_task'
             )
-            self.tunnel.taskMgr.add(
-                self.event_logging_task, 'event_logging_task'
-            )
+            # self.tunnel.taskMgr.add(
+            #     self.event_logging_task, 'event_logging_task'
+            # )
 
 
     def setup_logfile(self, foldername):
@@ -307,23 +318,27 @@ class FlipTunnel:
         position_file = open(position_filename, 'a', newline='')
         self.position_writer = csv.writer(position_file)
         if not position_file_exists:
-            self.position_writer.writerow(["Time", "Position", "Event"])
+            self.position_writer.writerow(["Index", "Time", "Position", "TotalRunDistance", "Event"])
 
-        # Setup event log file
-        event_filename = os.path.join(foldername, 'event_log.csv')
-        event_file_exists = Path(event_filename).is_file()
-        event_file = open(event_filename, 'a', newline='')
-        self.event_writer = csv.writer(event_file)
-        if not event_file_exists:
-            self.event_writer.writerow(["Time", "Event"])
+        # # Setup event log file
+        # event_filename = os.path.join(foldername, 'event_log.csv')
+        # event_file_exists = Path(event_filename).is_file()
+        # event_file = open(event_filename, 'a', newline='')
+        # self.event_writer = csv.writer(event_file)
+        # if not event_file_exists:
+        #     self.event_writer.writerow(["Time", "Event"])
 
 
     def spacePressed(self):
         self.isChallenged = True
+        
+    def manualReward(self):
+        self.wasManuallyRewarded = True
+        self.triggerReward()
 
     def checkIfReward(self, task):
         if self.isChallenged:
-            print("challenged, current position is", self.tunnel.position)
+            print("licked, current pos: ", self.tunnel.position, " current goal ", self.goals[self.currentGoalIdx])
             self.isChallenged = False
             self.wasChallenged = True
             if self.checkWithinGoal():
@@ -331,13 +346,16 @@ class FlipTunnel:
                 self.wasRewarded = True
                 self.triggerReward()
                 self.handleNextGoal()
-        if self.ruleName in ['run-auto', 'protocol1_lv1'] :
-            if self.tunnel.position % 90 + self.total_forward_run_distance > self.currentGoal:
-                # position will be something like 99.0011 before being 9.0011, and it will cause bugs.
-                # to prevent this, always subtract 90 if it is larger than 90
-                print(self.tunnel.position)
-                print(self.total_forward_run_distance)
-                print(self.currentGoal)
+        if self.ruleName in ['run-auto', 'protocol1_lv1'] :            
+            pos = self.tunnel.position
+            # position will be something like 99.0011 before being 9.0011, and it will cause bugs.
+            # to prevent this, always subtract 90 if it is larger than 90
+            if pos > self.flip_tunnel_options['length']:
+                pos = pos - 90
+            if  pos + self.total_forward_run_distance > self.currentGoal:
+                # print(self.tunnel.position)
+                # print(self.total_forward_run_distance)
+                # print(self.currentGoal)
                 self.wasRewarded = True
                 self.triggerReward()
                 self.handleNextGoal()
@@ -384,12 +402,12 @@ class FlipTunnel:
     def handleNextGoal(self):
         if self.ruleName == 'sequence':
             self.currentGoalIdx = (self.currentGoalIdx + 1) % self.goalNums
+            print('next goal is set to {}'.format(self.currentGoalIdx))
         elif self.ruleName == 'run-auto' or self.ruleName == 'run-lick':
             self.currentGoal = self.currentGoal + np.random.randint(10) + self.flip_tunnel_options['reward_distance']
         elif self.ruleName in ['protocol1_lv1', 'protocol1_lv2']:
             self.currentGoal = self.currentGoal + self.flip_tunnel_options['reward_distance']
-
-        print('next goal is set to {}'.format(self.currentGoal))
+            print('next goal is set to {}'.format(self.currentGoal))
 
     def reset_tunnel_task(self, task):
         self.current_flip_sections = []
@@ -398,6 +416,7 @@ class FlipTunnel:
             self.logger.info('section_id %d, new stim %d', i, section.stim_id)
         self.tunnel.freeze(False)
         self.tunnel.reset_camera(position=self.triggeResetPositionStart)
+        self.total_forward_run_distance += self.flip_tunnel_options['corridor_len']
         
     def reset_tunnel2end_task(self, task):
         self.current_flip_sections = []
@@ -406,6 +425,7 @@ class FlipTunnel:
             self.logger.info('section_id %d, new stim %d', i, section.stim_id)
         self.tunnel.freeze(False)
         self.tunnel.reset_camera(position=self.triggeResetPosition)
+        self.total_forward_run_distance -= self.flip_tunnel_options['corridor_len']
 
     def update_tunnel_task(self, task):
         # update grating sections, if mouse is in their onset/offset part
@@ -422,14 +442,12 @@ class FlipTunnel:
         self.card.setColor(*card_color)
 
         if self.tunnel.position > self.triggeResetPosition and not self.tunnel.frozen:
-            self.total_forward_run_distance += self.flip_tunnel_options['corridor_len']
             self.tunnel.freeze(True)
             self.tunnel.taskMgr.doMethodLater(
                 self.sleep_time, self.reset_tunnel_task, 'reset_tunnel_task'
             )
             
         if self.tunnel.position < self.triggeResetPositionStart and not self.tunnel.frozen:
-            self.total_forward_run_distance -= self.flip_tunnel_options['corridor_len']
             self.tunnel.freeze(True)
             self.tunnel.taskMgr.doMethodLater(
                 self.sleep_time, self.reset_tunnel2end_task, 'reset_tunnel2end_task'
@@ -502,24 +520,41 @@ class FlipTunnel:
         task.next_log_time += 1.0 / 60.0  # Schedule the next log in 1/60th of a second
 
         position = self.tunnel.position
-        self.shared_timestamp = current_time  # Save the timestamp for the event logging task
-        self.position_writer.writerow([current_time, position, ''])
-
-        return Task.cont
-
-    def event_logging_task(self, task):
+        total_run_distance = self.total_forward_run_distance + position
+        self.position_writer.writerow([self.sample_i, current_time, position, total_run_distance, ''])
+        
         if self.wasChallenged:
-            print('evemt logger was chalenged')
-            print([self.shared_timestamp, "challenged"])
-            self.position_writer.writerow([self.shared_timestamp, -1, "challenged"])
-            self.event_writer.writerow([self.shared_timestamp, "challenged"])
+            print("challenged")
+            self.position_writer.writerow([self.sample_i, current_time, -1, -1, "challenged"])
             self.wasChallenged = False
 
         if self.wasRewarded:
-            print('event logger was rewarded')
-            self.position_writer.writerow([self.shared_timestamp, -1, "rewarded"])
-            self.event_writer.writerow([self.shared_timestamp, "rewarded"])
-            print([self.shared_timestamp, "rewarded"])
+            self.position_writer.writerow([self.sample_i, current_time, -1, -1, "rewarded"])
+            print("rewarded")                
             self.wasRewarded = False
+            
+        if self.wasManuallyRewarded:
+            self.position_writer.writerow([self.sample_i, current_time, -1, -1, "manually-rewarded"])
+            print("mannualy rewarded")
+            self.wasManuallyRewarded = False
+            
+        self.sample_i += 1
 
         return Task.cont
+
+    # def event_logging_task(self, task):
+    #     if self.wasChallenged:
+    #         print('evemt logger was chalenged')
+    #         print([self.shared_timestamp, "challenged"])
+    #         self.position_writer.writerow([self.shared_timestamp, -1, "challenged"])
+    #         self.event_writer.writerow([self.shared_timestamp, "challenged"])
+    #         self.wasChallenged = False
+
+    #     if self.wasRewarded:
+    #         print('event logger was rewarded')
+    #         self.position_writer.writerow([self.shared_timestamp, -1, "rewarded"])
+    #         self.event_writer.writerow([self.shared_timestamp, "rewarded"])
+    #         print([self.shared_timestamp, "rewarded"])
+    #         self.wasRewarded = False
+
+    #     return Task.cont
