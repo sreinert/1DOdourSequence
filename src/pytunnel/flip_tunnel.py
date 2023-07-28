@@ -323,7 +323,7 @@ class FlipTunnel:
             print('Using assisted goals....')
             self.assisted_goals = options['flip_tunnel']['assisted_goals']
             self.tunnel.taskMgr.add(
-                self.checkIfAssistedReward, 'checkIfAssistedReward'
+                self.assist_reward_task, 'assist_reward_task'
             )
 
 
@@ -407,12 +407,16 @@ class FlipTunnel:
                 
         return Task.cont
     
-    def checkIfAssistedReward(self, task):
-        if self.checkAssistGoal():
+    def assist_reward_task(self, task):
+        goals = self.assisted_goals[self.currentGoalIdx]
+        position = self.tunnel.position
+        if position > goals[0] and position < goals[1]:
             print('Getting reward with assist')
             self.wasAssistRewarded = True
             self.triggerReward()
             self.handleNextGoal()
+            
+        return Task.cont
         
 
     def triggerReward(self):
@@ -459,7 +463,9 @@ class FlipTunnel:
     def checkAssistGoal(self):
         goals = self.assisted_goals[self.currentGoalIdx]
         position = self.tunnel.position
+        print('checkAssistGoal {} > {} and {}'.format(position, goals[0], goals[1]))
         if position > goals[0] and position < goals[1]:
+            print('true')
             return True
         return False
 
