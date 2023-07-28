@@ -249,6 +249,12 @@ class FlipTunnel:
         self.wasChallenged = False
         self.wasRewarded = False
         self.wasManuallyRewarded = False
+        self.wasAssistRewarded = False
+        
+        try:
+            self.punishBySpeedGain = options['flip_tunnel']['punishBySpeedGain']
+        except:
+            self.punishBySpeedGain = False
 
         self.isLogging = False
 
@@ -279,6 +285,8 @@ class FlipTunnel:
 
         # Add a task to check for the space bar being pressed
         self.tunnel.taskMgr.add(self.checkIfReward, "CheckIfRewardTask")
+        
+        # self.tunnel.taskMgr.add(self.checkIfPunished, "checkIfPunishedTask")
 
         for i, section in enumerate(self.flip_sections):
             self.logger.info('section_id %d, new stim %d', i, section.stim_id)
@@ -310,6 +318,13 @@ class FlipTunnel:
             # self.tunnel.taskMgr.add(
             #     self.event_logging_task, 'event_logging_task'
             # )
+            
+        if 'assisted_goals' in options['flip_tunnel']:
+            print('Using assisted goals....')
+            self.assisted_goals = options['flip_tunnel']['assisted_goals']
+            self.tunnel.taskMgr.add(
+                self.checkIfAssistedReward, 'checkIfAssistedReward'
+            )
 
 
     def setup_logfile(self, foldername):
@@ -341,8 +356,33 @@ class FlipTunnel:
         self.wasManuallyRewarded = True
         self.triggerReward()
 
+    # def checkIfPunished(self, task):
+    #     # print('check if punished')
+    #     if self.isChallenged and self.isAirpuff:
+    #         print('checking is air puff is needed')
+    #         if self.checkWithinPreviousOrCurrentGoal()!=True:
+    #             print('triggering airpuff...')
+    #             self.triggerAirpuff()
+                
+    #     if self.isChallenged and self.punishBySpeedGain:
+    #         if self.checkWithinPreviousOrCurrentGoal()!=True:
+    #             self.triggerGainDecrease()
+
+    def checkIfPunished(self):
+        # print('check if punished')
+        if self.isAirpuff:
+            # print('checking is air puff is needed')
+            if self.checkWithinPreviousOrCurrentGoal()!=True:
+                print('triggering airpuff...')
+                self.triggerAirpuff()
+                
+        if self.punishBySpeedGain:
+            if self.checkWithinPreviousOrCurrentGoal()!=True:
+                self.triggerGainDecrease()
+
     def checkIfReward(self, task):
         if self.isChallenged:
+            self.checkIfPunished()
             print("licked, current pos: ", self.tunnel.position, " current goal ", self.goals[self.currentGoalIdx])
             self.isChallenged = False
             self.wasChallenged = True
@@ -366,6 +406,14 @@ class FlipTunnel:
                 self.handleNextGoal()
                 
         return Task.cont
+    
+    def checkIfAssistedReward(self, task):
+        if self.checkAssistGoal():
+            print('Getting reward with assist')
+            self.wasAssistRewarded = True
+            self.triggerReward()
+            self.handleNextGoal()
+        
 
     def triggerReward(self):
         if self.isNIDaq:
@@ -375,12 +423,45 @@ class FlipTunnel:
                 self.valveController.stop()
             else:
                 self.tunnel.taskMgr.doMethodLater(
-                    0.2, self.stop_valve_task, 'stop_valve_task'
+                    0.3, self.stop_valve_task, 'stop_valve_task'
                 )
-
         else:
             time.sleep(0.2)
             print('reward is triggered')
+            
+    def triggerAirpuff(self):
+        if self.isNIDaq:
+            self.airpuffController.start()
+            print('air puffed')
+            if self.lock_corridor_reward:
+                time.sleep(0.1)
+                self.airpuffController.stop()
+            else:
+                self.tunnel.taskMgr.doMethodLater(
+                    0.1, self.stop_airpuff_task, 'stop_airpuff_task'
+                )
+        else:
+            time.sleep(0.1)
+            print('air puffed')
+            
+    def triggerGainDecrease(self, scale=0.05, min_speed_gain=0.1, delay=3):
+        speed_gain_before = self.speed_gain
+        self.speed_gain = max(min_speed_gain, self.speed_gain - scale)
+        
+        self.tunnel.taskMgr.doMethodLater(
+            delay, self.increaseSpeeGain, 'increaseSpeeGain'
+        )
+        print('speed gain decreased from {} to {}'.format(speed_gain_before, self.speed_gain))
+        
+    def increaseSpeeGain(self, task, scale):
+        self.speed_gain = self.speed_gain + scale
+        
+    def checkAssistGoal(self):
+        goals = self.assisted_goals[self.currentGoalIdx]
+        position = self.tunnel.position
+        if position > goals[0] and position < goals[1]:
+            return True
+        return False
 
     def checkWithinGoal(self):
         if self.ruleName == 'sequence':
@@ -408,6 +489,19 @@ class FlipTunnel:
             if self.tunnel.position + self.total_forward_run_distance > self.currentGoal:
                 return True
             return False
+        
+    def checkWithinPreviousOrCurrentGoal(self):
+        if self.ruleName == 'sequence':
+            position = self.tunnel.position
+            previousGoalIdx = (self.currentGoalIdx + (self.goalNums-1)) % self.goalNums #This is equal to subtracting one
+            for goalIdx in [previousGoalIdx, self.currentGoalIdx]:
+                goals = self.goals[goalIdx]
+                if position > goals[0] and position < goals[1]:
+                    return True
+            return False
+        else:
+            return True
+        
 
     def handleNextGoal(self):
         if self.ruleName == 'sequence':
@@ -430,6 +524,9 @@ class FlipTunnel:
     
     def stop_valve_task(self, task):
         self.valveController.stop()
+        
+    def stop_airpuff_task(self, task):
+        self.airpuffController.stop()
         
         
     def reset_tunnel2end_task(self, task):
@@ -476,11 +573,20 @@ class FlipTunnel:
                 options['daqChannel']['valve1'])
             self.lickDetector = nidaq.AnalogInput(
                 **options['daqChannel']['spout1'])
+            
+            if 'airpuff' in options['daqChannel']:
+                self.airpuffController = nidaq.DigitalOutput(
+                    options['daqChannel']['airpuff'])
+                self.isAirpuff = True
+            else:
+                self.isAirpuff = False
+            
             self.isNIDaq = True
         else:
             self.logger.warn("no daq channel specified, "
                              "using default channel 0")
             self.isNIDaq = False
+            self.isAirpuff = False
 
     def update_inputs_task(self, task):
         speed = self.tunnel.speed
@@ -538,7 +644,7 @@ class FlipTunnel:
         self.position_writer.writerow([self.sample_i, current_time, position, total_run_distance, ''])
         
         if self.wasChallenged:
-            print("challenged")
+            # print("challenged")
             self.position_writer.writerow([self.sample_i, current_time, -1, -1, "challenged"])
             self.wasChallenged = False
 
@@ -551,6 +657,11 @@ class FlipTunnel:
             self.position_writer.writerow([self.sample_i, current_time, -1, -1, "manually-rewarded"])
             print("mannualy rewarded")
             self.wasManuallyRewarded = False
+            
+        if self.wasAssistRewarded:
+            self.position_writer.writerow([self.sample_i, current_time, -1, -1, "assist-rewarded"])
+            print("assist rewarded")
+            self.wasAssistRewarded = False
             
         self.sample_i += 1
 
