@@ -41,6 +41,7 @@ logger:
 
 sequence_task:
     rulename: 'protocol1_lv2'
+    protocol: 'protocol_1_level_2'
 
 daqChannel:
   valve1: Dev1/port0/line7

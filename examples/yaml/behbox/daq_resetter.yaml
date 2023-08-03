@@ -20,6 +20,7 @@ flip_tunnel:
     io_module: nidaq
     length: 99
     margin_start: 9
+    reward_distance: 10
     manual_reward_with_space: True
     lock_corridor_reward: False
     
@@ -28,48 +29,23 @@ monitor:
     monitor1:
         width: 1366
     monitor2:
-        width: 1920
-        height: 1080
+        width: 100
+        height: 100
     monitor3:
-        width: 1920
-        height: 1080
+        width: 100
+        height: 100
 
-logger:
-    foldername: 'D:\masahiro\MN_1133270\230802-3'
-    box_number: '10'
-
+# logger:
+#     foldername: 'D:\masahiro\MN_1133271\230726'
+    
 sequence_task:
-    rulename: 'run-lick'
-    protocol: 'run-lick'
+    rulename: 'run-auto'
 
 daqChannel:
   valve1: Dev1/port0/line1
-  spout1: {chan: Dev1/ai10, min_value: 0, max_value: 10, threshold: 0.5}
+  spout1: {chan: Dev1/ai10, min_value: 0, max_value: 10, threshold: 0.1}
   
 walls_sequence:
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
-  - random_dots.png
   - random_dots.png
   
 inputs: 

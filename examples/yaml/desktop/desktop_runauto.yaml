@@ -32,8 +32,8 @@ monitor:
         width: 400
         height: 300
 
-logger:
-    foldername: '/home/masahiron/data/1dseq/MN_1099796/sample'
+# logger:
+#     foldername: '/home/masahiron/data/1dseq/MN_1099796/sample'
 
 sequence_task:
     rulename: 'run-auto'

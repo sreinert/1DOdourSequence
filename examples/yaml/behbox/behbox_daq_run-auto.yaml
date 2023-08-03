@@ -22,6 +22,7 @@ flip_tunnel:
     margin_start: 9
     reward_distance: 10
     manual_reward_with_space: True
+    lock_corridor_reward: False
     
 monitor:
     dual_monitor: True
@@ -34,14 +35,14 @@ monitor:
         width: 1920
         height: 1080
 
-logger:
-    foldername: 'D:\masahiro\MN_1099797\230703'
-
+# logger:
+#     foldername: 'D:\masahiro\MN_1133271\230726'
+    
 sequence_task:
     rulename: 'run-auto'
 
 daqChannel:
-  valve1: Dev1/port0/line7
+  valve1: Dev1/port0/line1
   spout1: {chan: Dev1/ai10, min_value: 0, max_value: 10, threshold: 0.1}
   
 walls_sequence:

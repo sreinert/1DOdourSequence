@@ -350,6 +350,7 @@ class FlipTunnel:
 
 
     def spacePressed(self):
+        print(self.tunnel.position)
         self.isChallenged = True
         
     def manualReward(self):
@@ -430,6 +431,7 @@ class FlipTunnel:
                     0.3, self.stop_valve_task, 'stop_valve_task'
                 )
         else:
+            print(self.tunnel.position)
             time.sleep(0.2)
             print('reward is triggered')
             

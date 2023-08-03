@@ -1,7 +1,7 @@
 texture_path: examples/textures/
 
 base_tunnel:
-    speed_gain: 0.4
+    speed_gain: 0.7
     eye_fov:
         fov: 100 
         fov_shift: 66
@@ -21,10 +21,10 @@ flip_tunnel:
     length: 99
     margin_start: 9
     # goals: [[13.5, 22.5], [31.5, 40.5], [49.5, 58.5], [67.5, 76.5], [85.5, 94.5]]
-    # goals: [[13.5, 22.5], [49.5, 58.5], [85.5, 94.5]]
-    # goals: [[13.5, 22.5], [31.5, 40.5], [67.5, 76.5]]
-    # goals: [[10, 26], [28, 44], [64, 80]]
-    goals: [[12, 24], [30, 42], [66, 78]]
+    # goals: [[12, 24], [66, 78], [30, 42]]
+    # goals: [[9, 21], [63, 75], [27, 39]]
+    goals: [[12, 21], [66, 75], [30, 39]]
+    assisted_goals: [[18, 19], [72, 73], [36, 37]]
     manual_reward_with_space: True
     lock_corridor_reward: False
 
@@ -40,16 +40,17 @@ monitor:
         height: 1080
 
 logger:
-    foldername: 'D:\masahiro\MN_1099797\230711'
+    foldername: 'D:\masahiro\MN_1133270\230802-2'
+    # foldername: 'D:\masahiro\MN_1099797\230802'
+    box_number: '10'
 
 sequence_task:
     rulename: 'sequence'
-    protocol: 'protocol_1_level_3_airpuff'
+    protocol: 'protocol_2_level_2'
 
 daqChannel:
-  valve1: Dev1/port0/line7
+  valve1: Dev1/port0/line1
   spout1: {chan: Dev1/ai10, min_value: 0, max_value: 10, threshold: 0.1}
-  airpuff: Dev1/port0/line6
   
 walls_sequence:
   - big_light_circles.png

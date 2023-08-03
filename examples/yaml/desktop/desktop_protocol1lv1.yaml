@@ -34,8 +34,8 @@ monitor:
         width: 400
         height: 300
 
-logger:
-    foldername: '/home/masahiron/data/samples'
+# logger:
+#     foldername: '/home/masahiron/data/samples'
 
 sequence_task:
     rulename: 'protocol1_lv1'

@@ -25,8 +25,9 @@ flip_tunnel:
     manual_reward_with_space: True
     lock_corridor_reward: False
 
-logger:
-    foldername: '/home/masahiron/data/assist_reward'
+# logger:
+#     foldername: '/home/masahiron/data/assist_reward'
+
 
 monitor:
     dual_monitor: True
@@ -68,6 +69,7 @@ walls_sequence:
   - grating1.jpg
   
 inputs: 
-    speed: {chan: Dev1/ctr0, diameter: 0.197, pulses_per_rev: 1000, error_value: 4000000000, threshold: 0.001}
+    # speed: {chan: Dev1/ctr0, diameter: 0.197, pulses_per_rev: 1000, error_value: 4000000000, threshold: 0.001}
+    {}
 
 outputs: {}

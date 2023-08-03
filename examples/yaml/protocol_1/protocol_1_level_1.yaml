@@ -36,13 +36,14 @@ monitor:
         height: 1080
 
 logger:
-    foldername: 'D:\masahiro\MN_1099797\230703_lv1'
+    foldername: 'D:\masahiro\MN_1133271\230729'
 
 sequence_task:
     rulename: 'protocol1_lv1'
+    protocol: 'protocol_1_level_1'
 
 daqChannel:
-  valve1: Dev1/port0/line7
+  valve1: Dev1/port0/line1
   spout1: {chan: Dev1/ai10, min_value: 0, max_value: 10, threshold: 0.1}
   
 walls_sequence:

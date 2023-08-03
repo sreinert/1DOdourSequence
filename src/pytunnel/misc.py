@@ -3,6 +3,7 @@ from __future__ import division, print_function
 import argparse
 import logging
 from pathlib import Path
+from datetime import datetime
 
 import yaml
 from panda3d.core import loadPrcFile, Filename, getModelPath
@@ -61,6 +62,14 @@ def default_main():
 
 
 def save_yaml(options):
+    
+    time_now = datetime.now()
+    try:
+        options['logger']['experiment_start_time'] = time_now.strftime('%H:%M')
+        options['logger']['date_time'] = str(time_now)
+    except:
+        options['logger'] = {'experiment_start_time': time_now.strftime('%H:%M'), 'date_time': str(time_now)}
+
     try:
         save_dir = Path(options['logger']['foldername'])
         save_dir.mkdir()

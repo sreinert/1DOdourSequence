@@ -1,5 +1,8 @@
 # Pytunnel package
+cd X:\src\srcMaNa_20230517_1DSequence\1DSequenceTaskPy
+cd Y:\src\srcMaNa_20230517_1DSequence\1DSequenceTaskPy
 
+python src\pytunnel\main.py examples\yaml\protocol_2\protocol_2_level_2_box10.yaml
 
 ## Introduction
 
