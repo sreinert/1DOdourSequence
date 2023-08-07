@@ -325,6 +325,30 @@ class FlipTunnel:
             self.tunnel.taskMgr.add(
                 self.assist_reward_task, 'assist_reward_task'
             )
+            
+            if 'assist_reward_sec' in options['flip_tunnel']:
+                self.assist_reward_sec = options['flip_tunnel']['assist_reward_sec']
+            else:
+                self.assist_reward_sec = 0.2
+        
+        if 'reward_sec' in options['flip_tunnel']:
+            self.root_reward_sec = options['flip_tunnel']['reward_sec']
+            self.reward_sec = options['flip_tunnel']['reward_sec']
+        else:
+            self.root_reward_sec = 0.2
+            self.reward_sec = 0.2
+            
+        if 'manual_reward_sec' in options['flip_tunnel']:
+            self.man_reward_sec = options['flip_tunnel']['manual_reward_sec']
+        else:
+            self.man_reward_sec = 0.1
+            
+        if 'wrong_reward_sec' in options['flip_tunnel']:
+            self.wrong_reward_sec = options['flip_tunnel']['wrong_reward_sec']
+            self.punishByRewardDecrease = True
+        else:
+            self.wrong_reward_sec = 0.1
+            self.punishByRewardDecrease = False
 
 
     def setup_logfile(self, foldername):
@@ -355,7 +379,7 @@ class FlipTunnel:
         
     def manualReward(self):
         self.wasManuallyRewarded = True
-        self.triggerReward()
+        self.triggerReward(length = self.man_reward_sec)
 
     # def checkIfPunished(self, task):
     #     # print('check if punished')
@@ -380,6 +404,10 @@ class FlipTunnel:
         if self.punishBySpeedGain:
             if self.checkWithinPreviousOrCurrentGoal()!=True:
                 self.triggerGainDecrease()
+                
+        if self.punishByRewardDecrease:
+            if self.checkWithinPreviousOrCurrentGoal()!=True:
+                self.reward_sec = self.wrong_reward_sec
 
     def checkIfReward(self, task):
         if self.isChallenged:
@@ -390,8 +418,9 @@ class FlipTunnel:
             if self.checkWithinGoal():
                 print('correct! Getting reward...')
                 self.wasRewarded = True
-                self.triggerReward()
+                self.triggerReward(length=self.reward_sec)
                 self.handleNextGoal()
+                
         if self.ruleName in ['run-auto', 'protocol1_lv1'] :            
             pos = self.tunnel.position
             # position will be something like 99.0011 before being 9.0011, and it will cause bugs.
@@ -403,7 +432,7 @@ class FlipTunnel:
                 # print(self.total_forward_run_distance)
                 # print(self.currentGoal)
                 self.wasRewarded = True
-                self.triggerReward()
+                self.triggerReward(length=self.reward_sec)
                 self.handleNextGoal()
                 
         return Task.cont
@@ -414,25 +443,25 @@ class FlipTunnel:
         if position > goals[0] and position < goals[1]:
             print('Getting reward with assist')
             self.wasAssistRewarded = True
-            self.triggerReward()
+            self.triggerReward(length=self.assist_reward_sec)
             self.handleNextGoal()
             
         return Task.cont
         
 
-    def triggerReward(self):
+    def triggerReward(self, length=0.3):
         if self.isNIDaq:
             self.valveController.start()
             if self.lock_corridor_reward:
-                time.sleep(0.2)
+                time.sleep(length)
                 self.valveController.stop()
             else:
                 self.tunnel.taskMgr.doMethodLater(
-                    0.3, self.stop_valve_task, 'stop_valve_task'
+                    length, self.stop_valve_task, 'stop_valve_task'
                 )
         else:
             print(self.tunnel.position)
-            time.sleep(0.2)
+            time.sleep(length)
             print('reward is triggered')
             
     def triggerAirpuff(self):
@@ -515,6 +544,7 @@ class FlipTunnel:
         if self.ruleName == 'sequence':
             self.currentGoalIdx = (self.currentGoalIdx + 1) % self.goalNums
             print('next goal is set to {}'.format(self.currentGoalIdx))
+            self.reward_sec = self.root_reward_sec
         elif self.ruleName == 'run-auto' or self.ruleName == 'run-lick':
             self.currentGoal = self.currentGoal + np.random.randint(10) + self.flip_tunnel_options['reward_distance']
         elif self.ruleName in ['protocol1_lv1', 'protocol1_lv2']:
