@@ -325,30 +325,36 @@ class FlipTunnel:
             self.tunnel.taskMgr.add(
                 self.assist_reward_task, 'assist_reward_task'
             )
-            
-            if 'assist_reward_sec' in options['flip_tunnel']:
-                self.assist_reward_sec = options['flip_tunnel']['assist_reward_sec']
-            else:
-                self.assist_reward_sec = 0.2
         
-        if 'reward_sec' in options['flip_tunnel']:
-            self.root_reward_sec = options['flip_tunnel']['reward_sec']
-            self.reward_sec = options['flip_tunnel']['reward_sec']
-        else:
-            self.root_reward_sec = 0.2
-            self.reward_sec = 0.2
+                
+        self.reward_length = {
+        'manual': 0.1,
+        'correct': 0.3,
+        'assist': 0.2,
+        'wrong': 0.15}
+        
+        try:
+            self.reward_length.update(options['flip_tunnel']['reward_length'])
+        except:
+            pass
+        
+        self.sound_mode = 'correct'
             
-        if 'manual_reward_sec' in options['flip_tunnel']:
-            self.man_reward_sec = options['flip_tunnel']['manual_reward_sec']
-        else:
-            self.man_reward_sec = 0.1
-            
-        if 'wrong_reward_sec' in options['flip_tunnel']:
-            self.wrong_reward_sec = options['flip_tunnel']['wrong_reward_sec']
+        if self.reward_length['correct'] != self.reward_length['wrong']:
             self.punishByRewardDecrease = True
         else:
-            self.wrong_reward_sec = 0.1
             self.punishByRewardDecrease = False
+                        
+        if 'sound_dir' in options['flip_tunnel']:
+            self.use_sound = True
+            sound_dir = options['flip_tunnel']['sound_dir']
+            self.sounds = {}
+            for key in ['correct', 'incorrect', 'assist', 'wrong', 'manual']:
+                self.sounds[key] = self.tunnel.loader.loadSfx(os.path.join(sound_dir, options['flip_tunnel']['sounds'][key]))
+            # print('correct sound is loaded
+            # print(self.sounds['correct'])
+        else:
+            self.use_sound = False
 
 
     def setup_logfile(self, foldername):
@@ -377,9 +383,15 @@ class FlipTunnel:
         print(self.tunnel.position)
         self.isChallenged = True
         
+        
     def manualReward(self):
+        # print('playing sound...')
+        # self.correct_sound.play()
+        # time.sleep(1)
+        # self.correct_sound.stop()
+        # print('sound stopped')
         self.wasManuallyRewarded = True
-        self.triggerReward(length = self.man_reward_sec)
+        self.triggerReward(mode='manual')
 
     # def checkIfPunished(self, task):
     #     # print('check if punished')
@@ -407,7 +419,7 @@ class FlipTunnel:
                 
         if self.punishByRewardDecrease:
             if self.checkWithinPreviousOrCurrentGoal()!=True:
-                self.reward_sec = self.wrong_reward_sec
+                self.sound_mode = 'wrong'
 
     def checkIfReward(self, task):
         if self.isChallenged:
@@ -418,7 +430,7 @@ class FlipTunnel:
             if self.checkWithinGoal():
                 print('correct! Getting reward...')
                 self.wasRewarded = True
-                self.triggerReward(length=self.reward_sec)
+                self.triggerReward(mode=self.sound_mode) # either correct or wrong
                 self.handleNextGoal()
                 
         if self.ruleName in ['run-auto', 'protocol1_lv1'] :            
@@ -432,7 +444,7 @@ class FlipTunnel:
                 # print(self.total_forward_run_distance)
                 # print(self.currentGoal)
                 self.wasRewarded = True
-                self.triggerReward(length=self.reward_sec)
+                self.triggerReward(mode='correct')
                 self.handleNextGoal()
                 
         return Task.cont
@@ -443,25 +455,51 @@ class FlipTunnel:
         if position > goals[0] and position < goals[1]:
             print('Getting reward with assist')
             self.wasAssistRewarded = True
-            self.triggerReward(length=self.assist_reward_sec)
+            self.triggerReward(mode='assist')
             self.handleNextGoal()
             
         return Task.cont
         
 
-    def triggerReward(self, length=0.3):
+    def triggerReward(self, mode='correct'):
+        try:
+            length = self.reward_length[mode]
+        except:
+            raise ValueError('mode should be one of {}'.format(self.reward_length.keys()))
+        
         if self.isNIDaq:
             self.valveController.start()
+            if self.use_sound:
+                self.sounds[mode].play()
             if self.lock_corridor_reward:
                 time.sleep(length)
                 self.valveController.stop()
+                if self.use_sound:
+                    self.sounds[mode].stop()
             else:
                 self.tunnel.taskMgr.doMethodLater(
                     length, self.stop_valve_task, 'stop_valve_task'
                 )
+                if self.use_sound:
+                    self.sound_mode = mode
+                    self.tunnel.taskMgr.doMethodLater(
+                    length, self.stop_sound_task, 'stop_sound_task'
+                )
         else:
+            if self.use_sound:
+                self.sounds[mode].play()
+                if self.lock_corridor_reward:
+                    time.sleep(length)
+                    if self.use_sound:
+                        self.sounds[mode].stop()
+                else:
+                    if self.use_sound:
+                        self.sound_mode = mode
+                        self.tunnel.taskMgr.doMethodLater(
+                        length, self.stop_sound_task, 'stop_sound_task'
+                    )
             print(self.tunnel.position)
-            time.sleep(length)
+            # time.sleep(length)
             print('reward is triggered')
             
     def triggerAirpuff(self):
@@ -544,7 +582,6 @@ class FlipTunnel:
         if self.ruleName == 'sequence':
             self.currentGoalIdx = (self.currentGoalIdx + 1) % self.goalNums
             print('next goal is set to {}'.format(self.currentGoalIdx))
-            self.reward_sec = self.root_reward_sec
         elif self.ruleName == 'run-auto' or self.ruleName == 'run-lick':
             self.currentGoal = self.currentGoal + np.random.randint(10) + self.flip_tunnel_options['reward_distance']
         elif self.ruleName in ['protocol1_lv1', 'protocol1_lv2']:
@@ -562,6 +599,9 @@ class FlipTunnel:
     
     def stop_valve_task(self, task):
         self.valveController.stop()
+        
+    def stop_sound_task(self, task):
+        self.sounds[self.sound_mode].stop()
         
     def stop_airpuff_task(self, task):
         self.airpuffController.stop()

@@ -24,6 +24,11 @@ flip_tunnel:
     assisted_goals: [[18, 19], [72, 73], [36, 37]]
     manual_reward_with_space: True
     lock_corridor_reward: False
+    reward_length:
+        manual: 0.1
+        correct: 0.3
+        assist: 0.2
+        wrong: 0.15
 
 monitor:
     dual_monitor: True
@@ -37,7 +42,7 @@ monitor:
         height: 1080
 
 logger:
-    foldername: 'D:\masahiro\MN_1133272\230802'
+    foldername: 'D:\masahiro\MN_1133272\230809'
     box_number: '16'
 
 sequence_task:

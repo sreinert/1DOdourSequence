@@ -1,7 +1,7 @@
 texture_path: examples/textures/
 
 base_tunnel:
-    speed_gain: 0.7
+    speed_gain: 0.01
     eye_fov:
         fov: 100 
         fov_shift: 66
@@ -17,13 +17,10 @@ flip_tunnel:
     sleep_time: 0
     stimulus_onset: 12
     neutral_texture: grey.png
-    io_module: nidaq
+    io_module: nidaq_stub
     length: 99
     margin_start: 9
-    # goals: [[13.5, 22.5], [31.5, 40.5], [49.5, 58.5], [67.5, 76.5], [85.5, 94.5]]
-    # goals: [[12, 24], [66, 78], [30, 42]]
-    # goals: [[9, 21], [63, 75], [27, 39]]
-    goals: [[12, 21], [66, 75], [30, 39]]
+    goals: [[9, 21], [63, 75], [27, 39]]
     assisted_goals: [[18, 19], [72, 73], [36, 37]]
     manual_reward_with_space: True
     lock_corridor_reward: False
@@ -41,30 +38,24 @@ flip_tunnel:
     #   manual: 'manual.ogg'
 
 
+# logger:
+#     foldername: '/home/masahiron/data/assist_reward'
+
+
 monitor:
     dual_monitor: True
     monitor1:
-        width: 1366
+        width: 400
     monitor2:
-        width: 1920
-        height: 1080
+        width: 400
+        height: 300
     monitor3:
-        width: 1920
-        height: 1080
-
-logger:
-    foldername: 'D:\masahiro\MN_1133266\230809'
-    # foldername: 'D:\masahiro\MN_1099797\230807'
-    box_number: '10'
+        width: 400
+        height: 300
 
 sequence_task:
     rulename: 'sequence'
-    protocol: 'protocol_2_level_2'
 
-daqChannel:
-  valve1: Dev1/port0/line1
-  spout1: {chan: Dev1/ai10, min_value: 0, max_value: 10, threshold: 0.075}
-  
 walls_sequence:
   - big_light_circles.png
   - random_dots.png
@@ -91,6 +82,7 @@ walls_sequence:
   - grating1.jpg
   
 inputs: 
-    speed: {chan: Dev1/ctr0, diameter: 0.197, pulses_per_rev: 1000, error_value: 4000000000, threshold: 0.001}
+    # speed: {chan: Dev1/ctr0, diameter: 0.197, pulses_per_rev: 1000, error_value: 4000000000, threshold: 0.001}
+    {}
 
 outputs: {}
