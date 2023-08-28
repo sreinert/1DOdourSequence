@@ -349,7 +349,7 @@ class FlipTunnel:
             self.use_sound = True
             sound_dir = options['flip_tunnel']['sound_dir']
             self.sounds = {}
-            for key in ['correct', 'incorrect', 'assist', 'wrong', 'manual']:
+            for key in options['flip_tunnel']['sounds'].keys():
                 self.sounds[key] = self.tunnel.loader.loadSfx(os.path.join(sound_dir, options['flip_tunnel']['sounds'][key]))
             # print('correct sound is loaded
             # print(self.sounds['correct'])
@@ -467,15 +467,22 @@ class FlipTunnel:
         except:
             raise ValueError('mode should be one of {}'.format(self.reward_length.keys()))
         
+        print('stopping after {} sec'.format(length))
+        
+        if self.ruleName in ['protocol3_lv3', 'prptocol4_lv3']:
+            print('current goal is {}'.format(self.currentGoalIdx))
+            mode = self.currentGoalIdx        
+        sound = self.sounds[mode]
+        
         if self.isNIDaq:
             self.valveController.start()
             if self.use_sound:
-                self.sounds[mode].play()
+                sound.play()
             if self.lock_corridor_reward:
                 time.sleep(length)
                 self.valveController.stop()
                 if self.use_sound:
-                    self.sounds[mode].stop()
+                    sound.stop()
             else:
                 self.tunnel.taskMgr.doMethodLater(
                     length, self.stop_valve_task, 'stop_valve_task'
@@ -487,16 +494,15 @@ class FlipTunnel:
                 )
         else:
             if self.use_sound:
-                self.sounds[mode].play()
+                sound.play()
                 if self.lock_corridor_reward:
                     time.sleep(length)
                     if self.use_sound:
-                        self.sounds[mode].stop()
+                        sound.stop()
                 else:
-                    if self.use_sound:
-                        self.sound_mode = mode
-                        self.tunnel.taskMgr.doMethodLater(
-                        length, self.stop_sound_task, 'stop_sound_task'
+                    self.sound_mode = mode
+                    self.tunnel.taskMgr.doMethodLater(
+                    length, self.stop_sound_task, 'stop_sound_task'
                     )
             print(self.tunnel.position)
             # time.sleep(length)
@@ -539,7 +545,7 @@ class FlipTunnel:
         return False
 
     def checkWithinGoal(self):
-        if self.ruleName == 'sequence':
+        if self.ruleName in ['sequence', 'protocol3_lv3', 'protocol4_lv3']:
             goals = self.goals[self.currentGoalIdx]
             position = self.tunnel.position
             if position > goals[0] and position < goals[1]:
@@ -566,7 +572,7 @@ class FlipTunnel:
             return False
         
     def checkWithinPreviousOrCurrentGoal(self):
-        if self.ruleName == 'sequence':
+        if self.ruleName in ['sequence', 'protocol3_lv3', 'protocol4_lv3']:
             position = self.tunnel.position
             previousGoalIdx = (self.currentGoalIdx + (self.goalNums-1)) % self.goalNums #This is equal to subtracting one
             for goalIdx in [previousGoalIdx, self.currentGoalIdx]:
@@ -579,7 +585,7 @@ class FlipTunnel:
         
 
     def handleNextGoal(self):
-        if self.ruleName == 'sequence':
+        if self.ruleName in ['sequence', 'protocol3_lv3', 'protocol4_lv3']:
             self.currentGoalIdx = (self.currentGoalIdx + 1) % self.goalNums
             print('next goal is set to {}'.format(self.currentGoalIdx))
         elif self.ruleName == 'run-auto' or self.ruleName == 'run-lick':
@@ -602,6 +608,7 @@ class FlipTunnel:
         
     def stop_sound_task(self, task):
         self.sounds[self.sound_mode].stop()
+        self.sound_mode = 'correct'
         
     def stop_airpuff_task(self, task):
         self.airpuffController.stop()
