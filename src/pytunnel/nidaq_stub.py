@@ -51,6 +51,9 @@ class AnalogInput:
         if self.threshold is not None:
             value = value > self.threshold
         return value
+    
+    def close(self):
+        pass
 
 
 class ConstantInput:
@@ -60,6 +63,9 @@ class ConstantInput:
 
     def read_float(self):
         return self.constant_value
+    
+    def close(self):
+        pass
 
 
 class AnalogOutput:
@@ -77,6 +83,9 @@ class AnalogOutput:
             print('bad scaled value {} for {}'.format(value, self.chan))
 
         print('write {} to {}'.format(value, self.chan))
+        
+    def close(self):
+        pass
 
 
 class DigitalOutput:
@@ -92,6 +101,9 @@ class DigitalOutput:
 
     def stop(self):
         print('stop {}'.format(self.chan))
+        
+    def close(self):
+        pass
 
 
 class PulseGenerator:
@@ -104,6 +116,9 @@ class PulseGenerator:
 
     def stop(self):
         print('stop {}'.format(self.chan))
+        
+    def close(self):
+        pass
 
 
 class AngularEncoder:
@@ -115,6 +130,9 @@ class AngularEncoder:
     def read_float(self):
         self.count += 10
         return self.count
+    
+    def close(self):
+        pass
 
 
 class AngularVelocityEncoder:
@@ -132,3 +150,6 @@ class AngularVelocityEncoder:
         if self.threshold is not None and fabs(value) < self.threshold:
             value = 0
         return value * self.gain
+
+    def close(self):
+        pass

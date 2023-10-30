@@ -80,3 +80,19 @@ def save_yaml(options):
             yaml.dump(options, file)
     except KeyError:
         print("foldername not specified. this session will not be saved/logged...")
+        
+        
+# Define a function to clear tasks when the script exits
+def cleanup(tunnel):
+    
+    print('releasing serial ports')
+    try:
+        tunnel.close()
+    except:
+        print('failed to close serial ports or you have not implemented a close method')
+
+# Define a function to handle Ctrl+C
+def handle_ctrl_c(signum, frame, tunnel):
+    cleanup(tunnel)
+    exit(1)
+    
