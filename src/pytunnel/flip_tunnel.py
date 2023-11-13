@@ -260,7 +260,7 @@ class FlipTunnel:
         try:
             self.assist_sound_volume = options['flip_tunnel']['assist_sound_volume']
         except:
-            self.assist_sound_volume = 0.5
+            self.assist_sound_volume = 0.3
         try:
             self.reward_tone_length = options['flip_tunnel']['reward_tone_length']
         except:
@@ -482,7 +482,7 @@ class FlipTunnel:
                 if np.random.rand() <= self.assist_reward_prob:
                     print('Getting reward with assist')
                     self.wasAssistRewarded = True
-                    self.triggerReward(mode=self.currentGoalIdx)
+                    self.triggerReward(mode='assist')
                     self.handleNextGoal()
                     
             else:
@@ -648,7 +648,7 @@ class FlipTunnel:
         
 
     def handleNextGoal(self):
-        if self.ruleName in ['sequence', 'audio-guided-sequence']:
+        if self.ruleName in ['sequence', 'audio-guided-sequence', 'protocol5_lv3']:
             self.currentGoalIdx = (self.currentGoalIdx + 1) % self.goalNums
             print('next goal is set to {}'.format(self.currentGoalIdx))
         elif self.ruleName == 'run-auto' or self.ruleName == 'run-lick':
