@@ -1,18 +1,20 @@
 #!/usr/bin/env python
 
 from __future__ import division, print_function
+import csv
+import os
 
 import logging
+from pathlib import Path
 
 import numpy as np
 from direct.task import Task
-from panda3d.core import CardMaker
+from panda3d.core import CardMaker, ClockObject
 
 from base_tunnel import BaseTunnel
 from misc import default_main
-
-import nidaq as nidaq
 import time
+
 
 class Flipper:
 
@@ -184,198 +186,10 @@ class FlipSection:
         return True
 
 
-def make_trigger_task(tunnel, trigger_chan, delay=None, onset=None,
-                      duration=None, extent=None):
-
-    # force user to provide an extent or a duration
-    if extent is None and duration is None:
-        raise ValueError("'extent' or 'duration' must be defined")
-
-    # immediate start if no delay nor onset
-    if delay is None and onset is None:
-        delay, onset = 0, 0
-
-    logging.basicConfig()
-    logger = logging.getLogger(__name__)
-
-    # define a task function to stop the trigger after some time or space
-    def stop_trigger_task(trigger_onset, task):
-        time_done = duration is not None and task.time >= duration
-        pos_done = (
-            extent is not None and tunnel.position >= trigger_onset + extent
-        )
-
-        if time_done or pos_done:
-            logger.info(
-                "stop trigger (time: %s, position: %s)", time_done, pos_done
-            )
-            trigger_chan.stop()
-            return Task.done
-
-        return Task.cont
-
-    # define a task function to start trigger after some time or space
-    def start_trigger_task(stim_onset, task):
-        time_done = delay is not None and task.time >= delay
-        pos_done = (
-            onset is not None and tunnel.position >= stim_onset + onset
-        )
-
-        if time_done or pos_done:
-            logger.info("start trigger (time: %s, position: %s)",
-                        time_done, pos_done)
-            trigger_chan.start()
-            tunnel.taskMgr.add(
-                stop_trigger_task, 'stop_trigger_task', sort=-20,
-                extraArgs=[tunnel.position], appendTask=True
-            )
-            return Task.done
-
-        return Task.cont
-
-    return start_trigger_task
-
-
-def make_flip_sections(tunnel, walls_sequence, default_onset, io_module):
-    """_summary_
-    instantiate a list of FlipSection objects, possibly interlinked
-
-    Args:
-        tunnel (_type_): _description_
-        walls_sequence (list): written in yaml file. Looks like below. Each item is either str
-                               or dict.
-
-        walls_sequence:
-        - random_dots.png
-        - random_dots.png
-        - stimulus_textures: [grating1.jpg, grating2.jpg]
-            triggers:
-            - []
-            - [{chan: Dev1/ctr2, delay: 0.16, duration: 1, duty_cycle: 0.4, freq: 20}, {chan: Dev2/port0/line0, onset: 3, duration: 0.2}]
-
-        It would be
-        {'stimulus_textures': ['grating1.jpg', 'grating2.jpg'], 
-         'triggers': [
-                [], 
-                [{'chan': 'Dev1/ctr2', 'delay': 0.16, 'duration': 1, 'duty_cycle': 0.4, 'freq': 20}, 
-                {'chan': 'Dev2/port0/line0', 'onset': 3, 'duration': 0.2}]
-                ]}
-
-        The length of 'stimulus_textures' should match the length of 'triggers'.
-
-
-        default_onset (_type_): _description_
-        io_module (_type_): _description_
-
-    Raises:
-        ValueError: _description_
-        ValueError: _description_
-        ValueError: _description_
-        ValueError: _description_
-        ValueError: _description_
-        ValueError: _description_
-
-    Returns:
-        _type_: _description_
-    """
-
-    load_texture = tunnel.loader.loadTexture
-    flip_sections = []
-    open_loop_options = []
-
-    for walls, section in zip(walls_sequence, tunnel.sections):
-        if isinstance(walls, str):
-            continue
-
-        assert isinstance(walls, dict)
-
-        # load alternative textures
-        # if not found, return default
-        stimulus_onset = walls.get('stimulus_onset', default_onset)
-        stimulus_textures = [
-            load_texture(t) for t in walls['stimulus_textures']
-        ]
-        n_stim = len(stimulus_textures)
-
-        # prepare triggers
-        triggers = {i: [] for i in range(n_stim)}
-
-        if 'triggers' in walls:
-
-            # one trigger for one texture
-            if len(triggers) != n_stim:
-                raise ValueError("'triggers' should have {} elements."
-                                 .format(n_stim))
-
-            for i, trigger in enumerate(walls['triggers']):
-                if not trigger:  # triggers may be [] or [{}] or [{},{}]
-                    continue
-
-                trigger = [trigger] if isinstance(trigger, dict) else trigger
-                trigger_chan_n_kwargs = [
-                    io_module.make_trigger(**trig) for trig in trigger
-                ]
-                triggers[i] = [
-                    make_trigger_task(tunnel, chan, **kwargs)
-                    for chan, kwargs in trigger_chan_n_kwargs
-                ]
-
-        # prepare flipping logic
-        if 'linked_section' in walls:
-
-            # prevent use of incompatible options
-            random_options = ['probas', 'n_block', 'max_noflip_trials']
-            if any(option in walls for option in random_options):
-                raise ValueError(
-                    "'linked_section' is not compatible with 'probas', "
-                    "'n_block' and 'max_noflip_trials'."
-                )
-
-            linked_section = flip_sections[walls['linked_section']]
-            if n_stim != linked_section.n_stim:
-                raise ValueError(
-                    'Number of stimulus textures between the section ({}) and '
-                    'its linked section ({}) should match.'
-                    .format(n_stim, linked_section.n_stim)
-                )
-
-            flipper = Follower(linked_section.flipper)
-
-        else:
-            probas = walls.get('probas', np.ones(n_stim) / n_stim)
-            if len(probas) != n_stim:
-                raise ValueError(
-                    "'probas' should have {} elements.".format(n_stim)
-                )
-            if not np.isclose(np.sum(probas), 1):
-                raise ValueError("Elements of 'probas' should sum to 1.")
-
-            if 'n_block' in walls:
-                if 'max_noflip_trials' in walls:
-                    raise ValueError(
-                        "'n_block' is not compatible with 'max_noflip_trials'."
-                    )
-                flipper = BlockFlipper(probas, walls['n_block'])
-
-            else:
-                max_noflip_trials = walls.get('max_noflip_trials', np.inf)
-                flipper = Flipper(probas, max_noflip_trials)
-
-        # instantiate the new flip section and add it to the list
-        new_flip_section = FlipSection(
-            section, stimulus_textures, stimulus_onset, triggers, flipper
-        )
-
-        flip_sections.append(new_flip_section)
-        open_loop_options.append(walls.get('open_loop'))
-
-    return flip_sections, open_loop_options
-
-
 class FlipTunnel:
 
     def __init__(self, tunnel, card, flip_sections, inputs, outputs,
-                 sleep_time, test_mode):
+                 sleep_time, test_mode, options):
         """_summary_
 
         Args:
@@ -383,7 +197,7 @@ class FlipTunnel:
             card (_type_): _description_
             flip_sections (_type_): _description_
             inputs (_type_): _description_
-            outputs (tuple(key: AnalogOutput)): handles NIDAQ control, in this case is a reward valve. 
+            outputs (tuple(key: AnalogOutput)): handles NIDAQ control, in this case is a reward valve.
                                     .write_float method uses daq.Task.WriteAnalogScalarF64
             sleep_time (_type_): _description_
             test_mode (_type_): _description_
@@ -391,8 +205,6 @@ class FlipTunnel:
 
         logging.basicConfig()
         self.logger = logging.getLogger(__name__)
-
-        
         self.tunnel = tunnel
         self.current_flip_sections = []
         self.flip_sections = flip_sections
@@ -400,20 +212,101 @@ class FlipTunnel:
         self.sleep_time = sleep_time
         self.inputs = inputs
         self.outputs = outputs
+        
+        try:
+            self.lock_corridor_reward = options['flip_tunnel']['lock_corridor_reward']
+        except:
+            self.lock_corridor_reward = True
 
-        self.goalNums = 3
-        self.currentGoal = 0
-        self.goals = [[9, 18], [45, 54], [63, 72]]
+        self.globalClock = ClockObject.getGlobalClock()
+        
+        self.total_forward_run_distance = 0
+        
+        # This will make the later analysis so much easier
+        self.sample_i = 0
 
-        self.ruleName = 'sequence'
+        
+        # self.goals = [[0, 9], [36, 45], [54, 63]]
+        try:
+            self.goals = options['flip_tunnel']['goals']
+        except:
+            self.goals = [[0, 9]]
+        self.goalNums = len(self.goals)
+        try:
+            self.currentGoal = options['flip_tunnel']['initial_goal']
+        except:
+            self.currentGoal = 0
+        self.currentGoalIdx = 0
+        
+        try:
+            manual_reward_with_space = options['flip_tunnel']['manual_reward_with_space']
+        except:
+            manual_reward_with_space = False
+
+        self.ruleName = options['sequence_task']['rulename']
 
         self.isChallenged = False
+        self.wasChallenged = False
+        self.wasRewarded = False
+        self.wasManuallyRewarded = False
+        self.wasAssistRewarded = False
+        
+        self.assist_sound_playing = False
+        
+        try:
+            self.assist_reward_prob = options['flip_tunnel']['assist_reward_prob']
+        except:
+            self.assist_reward_prob = 1
+        try:
+            self.assist_sound_volume = options['flip_tunnel']['assist_sound_volume']
+        except:
+            self.assist_sound_volume = 0.3
+        try:
+            self.reward_tone_length = options['flip_tunnel']['reward_tone_length']
+        except:
+            self.reward_tone_length = 1
+        try:
+            self.assist_reward_prob_decay = options['flip_tunnel']['assist_reward_prob_decay']
+        except:
+            self.assist_reward_prob_decay = 0.9
+        
+        
+        try:
+            self.punishBySpeedGain = options['flip_tunnel']['punishBySpeedGain']
+        except:
+            self.punishBySpeedGain = False
 
-        self.tunnel.accept("space", self.spacePressed)
+        self.isLogging = False
 
+        self.triggeResetPosition = options['flip_tunnel']['length']
+        try:
+            self.triggeResetPositionStart = options['flip_tunnel']['margin_start']
+            # self.reset_camera(self.triggeResetPositionStart)
+        except:
+            self.triggeResetPositionStart = 0
+        
+        self.flip_tunnel_options = options['flip_tunnel']
+        self.flip_tunnel_options['corridor_len'] = options['flip_tunnel']['length'] - options['flip_tunnel']['margin_start']
+        print('corridor length is ', self.flip_tunnel_options['corridor_len'])
+
+        self.create_nidaq_controller(options)
+
+        try:
+            foldername = options['logger']['foldername']
+            self.setup_logfile(foldername)
+            self.isLogging = True
+        except:
+            self.isLogging = False
+
+        if test_mode:
+            self.tunnel.accept("space", self.spacePressed)
+        if manual_reward_with_space:
+            self.tunnel.accept("space", self.manualReward)
 
         # Add a task to check for the space bar being pressed
         self.tunnel.taskMgr.add(self.checkIfReward, "CheckIfRewardTask")
+        
+        # self.tunnel.taskMgr.add(self.checkIfPunished, "checkIfPunishedTask")
 
         for i, section in enumerate(self.flip_sections):
             self.logger.info('section_id %d, new stim %d', i, section.stim_id)
@@ -433,48 +326,338 @@ class FlipTunnel:
             self.update_outputs_task, 'update_outputs_task', sort=10
         )
 
-        self.tunnel.taskMgr.add(
-            self.update_piezo_task, 'update_piezo_task'
-        )
+        if self.isNIDaq:
+            self.tunnel.taskMgr.add(
+                self.update_piezo_task, 'update_piezo_task'
+            )
 
-        self.valveController = nidaq.DigitalOutput(options['daqChannel']['valve1'])
-        self.lickDetector = nidaq.AnalogInput(**options['daqChannel']['spout1'])
+        if self.isLogging:
+            self.tunnel.taskMgr.add(
+                self.position_logging_task, 'position_logging_task'
+            )
+            # self.tunnel.taskMgr.add(
+            #     self.event_logging_task, 'event_logging_task'
+            # )
+            
+        if 'assisted_goals' in options['flip_tunnel']:
+            print('Using assisted goals....')
+            self.assisted_goals = options['flip_tunnel']['assisted_goals']
+            self.tunnel.taskMgr.add(
+                self.assist_reward_task, 'assist_reward_task'
+            )
+        if 'assist_tone_goals' in options['flip_tunnel']:
+            print('using assisted tones')
+            self.assist_tone_goals = options['flip_tunnel']['assist_tone_goals']       
+            self.tunnel.taskMgr.add(
+                self.assist_tone_task, 'assist_tone_task'
+            )
+
+        self.reward_length = {
+        'manual': 0.1,
+        'correct': 0.3,
+        'assist': 0.2,
+        'wrong': 0.15}
+        
+        try:
+            self.reward_length.update(options['flip_tunnel']['reward_length'])
+        except:
+            pass
+        
+        self.sound_mode = 'correct'
+            
+        if self.reward_length['correct'] != self.reward_length['wrong']:
+            self.punishByRewardDecrease = True
+        else:
+            self.punishByRewardDecrease = False
+                        
+        if 'sound_dir' in options['flip_tunnel']:
+            self.use_sound = True
+            sound_dir = options['flip_tunnel']['sound_dir']
+            self.sounds = {}
+            for key in options['flip_tunnel']['sounds'].keys():
+                self.sounds[key] = self.tunnel.loader.loadSfx(os.path.join(sound_dir, options['flip_tunnel']['sounds'][key]))
+            # print('correct sound is loaded
+            # print(self.sounds['correct'])
+        else:
+            self.use_sound = False
+
+
+    def setup_logfile(self, foldername):
+        # Check if the directory exists, if not, create it
+        if not os.path.exists(foldername):
+            os.makedirs(foldername)
+        
+        # Setup position log file
+        position_filename = os.path.join(foldername, 'position_log.csv')
+        position_file_exists = Path(position_filename).is_file()
+        position_file = open(position_filename, 'a', newline='')
+        self.position_writer = csv.writer(position_file)
+        if not position_file_exists:
+            self.position_writer.writerow(["Index", "Time", "Position", "TotalRunDistance", "Event"])
+
+        # # Setup event log file
+        # event_filename = os.path.join(foldername, 'event_log.csv')
+        # event_file_exists = Path(event_filename).is_file()
+        # event_file = open(event_filename, 'a', newline='')
+        # self.event_writer = csv.writer(event_file)
+        # if not event_file_exists:
+        #     self.event_writer.writerow(["Time", "Event"])
+
+
     def spacePressed(self):
-            # self.isPressed = True
-            self.isChallenged = True
+        print(self.tunnel.position)
+        self.isChallenged = True
+        
+        
+    def manualReward(self):
+        # print('playing sound...')
+        # self.correct_sound.play()
+        # time.sleep(1)
+        # self.correct_sound.stop()
+        # print('sound stopped')
+        self.wasManuallyRewarded = True
+        self.triggerReward(mode='manual')
+
+    # def checkIfPunished(self, task):
+    #     # print('check if punished')
+    #     if self.isChallenged and self.isAirpuff:
+    #         print('checking is air puff is needed')
+    #         if self.checkWithinPreviousOrCurrentGoal()!=True:
+    #             print('triggering airpuff...')
+    #             self.triggerAirpuff()
+                
+    #     if self.isChallenged and self.punishBySpeedGain:
+    #         if self.checkWithinPreviousOrCurrentGoal()!=True:
+    #             self.triggerGainDecrease()
+
+    def checkIfPunished(self):
+        # print('check if punished')
+        if self.isAirpuff:
+            # print('checking is air puff is needed')
+            if self.checkWithinPreviousOrCurrentGoal()!=True:
+                print('triggering airpuff...')
+                self.triggerAirpuff()
+                
+        if self.punishBySpeedGain:
+            if self.checkWithinPreviousOrCurrentGoal()!=True:
+                self.triggerGainDecrease()
+                
+        if self.punishByRewardDecrease:
+            if self.checkWithinPreviousOrCurrentGoal()!=True:
+                self.sound_mode = 'wrong'
+
     def checkIfReward(self, task):
         if self.isChallenged:
-            print("Pressed, current position is", self.tunnel.position)
+            self.checkIfPunished()
+            print("licked, current pos: ", self.tunnel.position, " current goal ", self.goals[self.currentGoalIdx])
             self.isChallenged = False
+            self.wasChallenged = True
             if self.checkWithinGoal():
                 print('correct! Getting reward...')
-                self.triggerReward()
+                self.wasRewarded = True
+                self.triggerReward(mode=self.sound_mode) # either correct or wrong
                 self.handleNextGoal()
+                
+        if self.ruleName in ['run-auto', 'protocol1_lv1'] :            
+            pos = self.tunnel.position
+            # position will be something like 99.0011 before being 9.0011, and it will cause bugs.
+            # to prevent this, always subtract 90 if it is larger than 90
+            if pos > self.flip_tunnel_options['length']:
+                pos = pos - 90
+            if  pos + self.total_forward_run_distance > self.currentGoal:
+                # print(self.tunnel.position)
+                # print(self.total_forward_run_distance)
+                # print(self.currentGoal)
+                self.wasRewarded = True
+                self.triggerReward(mode='correct')
+                self.handleNextGoal()
+                
         return Task.cont
+    
+    def assist_reward_task(self, task):
+        goals = self.assisted_goals[self.currentGoalIdx]
+        position = self.tunnel.position
+        if position > goals[0] and position < goals[1]:
+            if self.ruleName in ['protocol5_lv3']:
+                if np.random.rand() <= self.assist_reward_prob:
+                    print('Getting reward with assist')
+                    self.wasAssistRewarded = True
+                    self.triggerReward(mode='assist')
+                    self.handleNextGoal()
+                    
+            else:
+                print('Getting reward with assist')
+                self.wasAssistRewarded = True
+                self.triggerReward(mode='assist')
+                self.handleNextGoal()
+                
+        return Task.cont
+    
+    def assist_tone_task(self, task):
+        goals = self.assist_tone_goals[self.currentGoalIdx]
+        position = self.tunnel.position
+        if position > goals[0] and position < goals[1] and not self.assist_sound_playing:
+            print('playing assist sound')
+            self.assist_sound_playing = True
+            mode = self.currentGoalIdx
+            sound = self.sounds[mode]
+            sound.setLoop(True)
+            sound.setVolume(self.assist_sound_volume)
+            sound.play()
+            
+        elif (position < goals[0] or position > goals[1]) and self.assist_sound_playing:
+            print('stopping assist sound')
+            self.stop_assist_sound()
+            
+        return Task.cont
+            
+        
+        
 
-    def triggerReward(self):
-        self.valveController.start()
-        time.sleep(0.1)
-        self.valveController.stop()
-        return
+    def triggerReward(self, mode='correct'):
+        if self.assist_sound_playing:
+            self.stop_assist_sound()
+        try:
+            length = self.reward_length[mode]
+        except:
+            raise ValueError('mode should be one of {}'.format(self.reward_length.keys()))
+        
+        if self.reward_tone_length == 0:
+            tone_length = length
+        else:
+            tone_length = self.reward_tone_length
+        
+        print('stopping after {} sec'.format(length))
+        
+        if self.ruleName in ['audio-guided-sequence', 'protocol5_lv3']:
+            print('current goal is {}'.format(self.currentGoalIdx))
+            mode = self.currentGoalIdx
+        if self.use_sound:     
+            sound = self.sounds[mode]
+            
+        if self.isNIDaq:
+            self.valveController.start()
+            if self.use_sound:
+                sound.setVolume(1)
+                sound.play()
+            if self.lock_corridor_reward:
+                time.sleep(length)
+                self.valveController.stop()
+                if self.use_sound:
+                    sound.stop()
+            else:
+                self.tunnel.taskMgr.doMethodLater(
+                    length, self.stop_valve_task, 'stop_valve_task'
+                )
+                if self.use_sound:
+                    self.sound_mode = mode
+                    self.tunnel.taskMgr.doMethodLater(
+                    tone_length, self.stop_sound_task, 'stop_sound_task'
+                )
+        else:
+            if self.use_sound:
+                sound.play()
+                if self.lock_corridor_reward:
+                    time.sleep(length)
+                    if self.use_sound:
+                        sound.stop()
+                else:
+                    self.sound_mode = mode
+                    self.tunnel.taskMgr.doMethodLater(
+                    tone_length, self.stop_sound_task, 'stop_sound_task'
+                    )
+            print(self.tunnel.position)
+            # time.sleep(length)
+            print('reward is triggered')
+            
+    def triggerAirpuff(self):
+        if self.isNIDaq:
+            self.airpuffController.start()
+            print('air puffed')
+            if self.lock_corridor_reward:
+                time.sleep(0.1)
+                self.airpuffController.stop()
+            else:
+                self.tunnel.taskMgr.doMethodLater(
+                    0.1, self.stop_airpuff_task, 'stop_airpuff_task'
+                )
+        else:
+            time.sleep(0.1)
+            print('air puffed')
+            
+    def triggerGainDecrease(self, scale=0.05, min_speed_gain=0.1, delay=3):
+        speed_gain_before = self.speed_gain
+        self.speed_gain = max(min_speed_gain, self.speed_gain - scale)
+        
+        self.tunnel.taskMgr.doMethodLater(
+            delay, self.increaseSpeeGain, 'increaseSpeeGain'
+        )
+        print('speed gain decreased from {} to {}'.format(speed_gain_before, self.speed_gain))
+        
+    def increaseSpeeGain(self, task, scale):
+        self.speed_gain = self.speed_gain + scale
+        
+    # def checkAssistGoal(self):
+    #     goals = self.assisted_goals[self.currentGoalIdx]
+    #     position = self.tunnel.position
+    #     print('checkAssistGoal {} > {} and {}'.format(position, goals[0], goals[1]))
+    #     if position > goals[0] and position < goals[1]:
+    #         print('true')
+    #         return True
+    #     return False
+
 
     def checkWithinGoal(self):
-        if self.ruleName == 'sequence':
-            goals = self.goals[self.currentGoal]
+        if self.ruleName in ['sequence', 'audio-guided-sequence', 'protocol5_lv3']:
+            goals = self.goals[self.currentGoalIdx]
             position = self.tunnel.position
             if position > goals[0] and position < goals[1]:
                 return True
             return False
-        elif self.ruleName == 'all':
+        elif self.ruleName in ['all']:
             position = self.tunnel.position
-            for goal in self.goals:
+            for goals in self.goals:
                 if position > goals[0] and position < goals[1]:
                     return True
             return False
+        elif self.ruleName in ['protocol1_lv2']:
+            position = self.tunnel.position
+            if self.tunnel.position + self.total_forward_run_distance > self.currentGoal:
+                for goals in self.goals:
+                    if position > goals[0] and position < goals[1]:
+                        
+                        return True
+            return False
+        elif self.ruleName in ['run-lick']:
+            print(self.tunnel.position + self.total_forward_run_distance,  self.currentGoal)
+            if self.tunnel.position + self.total_forward_run_distance > self.currentGoal:
+                return True
+            return False
+        
+    def checkWithinPreviousOrCurrentGoal(self):
+        if self.ruleName in ['sequence', 'audio-guided-sequence', 'protocol5_lv3']:
+            position = self.tunnel.position
+            previousGoalIdx = (self.currentGoalIdx + (self.goalNums-1)) % self.goalNums #This is equal to subtracting one
+            for goalIdx in [previousGoalIdx, self.currentGoalIdx]:
+                goals = self.goals[goalIdx]
+                if position > goals[0] and position < goals[1]:
+                    return True
+            return False
+        else:
+            return True
+        
 
     def handleNextGoal(self):
-        self.currentGoal = (self.currentGoal + 1) % self.goalNums
-        print('next goal is set')
+        if self.ruleName in ['sequence', 'audio-guided-sequence', 'protocol5_lv3']:
+            self.currentGoalIdx = (self.currentGoalIdx + 1) % self.goalNums
+            print('next goal is set to {}'.format(self.currentGoalIdx))
+        elif self.ruleName == 'run-auto' or self.ruleName == 'run-lick':
+            self.currentGoal = self.currentGoal + np.random.randint(10) + self.flip_tunnel_options['reward_distance']
+        elif self.ruleName in ['protocol1_lv1', 'protocol1_lv2']:
+            while self.currentGoal < self.tunnel.position + self.total_forward_run_distance:
+                 self.currentGoal += self.flip_tunnel_options['reward_distance']
+            self.currentGoal -= self.flip_tunnel_options['reward_distance']
+            print('next goal is set to {}'.format(self.currentGoal))
 
     def reset_tunnel_task(self, task):
         self.current_flip_sections = []
@@ -482,7 +665,37 @@ class FlipTunnel:
             section.reset()
             self.logger.info('section_id %d, new stim %d', i, section.stim_id)
         self.tunnel.freeze(False)
-        self.tunnel.reset_camera()
+        self.tunnel.reset_camera(position=self.triggeResetPositionStart)
+        self.total_forward_run_distance += self.flip_tunnel_options['corridor_len']
+    
+    def stop_valve_task(self, task):
+        self.valveController.stop()
+        
+    def stop_sound_task(self, task):
+        self.sounds[self.sound_mode].stop()
+        self.sound_mode = 'correct'
+        
+    def stop_assist_sound(self):
+        self.sounds[self.currentGoalIdx].stop()
+        self.sounds[self.currentGoalIdx].setLoop(False)
+        self.sounds[self.currentGoalIdx].setVolume(1)
+        self.assist_sound_playing = False
+        
+        
+    def stop_airpuff_task(self, task):
+        self.airpuffController.stop()
+        
+    
+        
+        
+    def reset_tunnel2end_task(self, task):
+        self.current_flip_sections = []
+        for i, section in enumerate(self.flip_sections):
+            section.reset()
+            self.logger.info('section_id %d, new stim %d', i, section.stim_id)
+        self.tunnel.freeze(False)
+        self.tunnel.reset_camera(position=self.triggeResetPosition)
+        self.total_forward_run_distance -= self.flip_tunnel_options['corridor_len']
 
     def update_tunnel_task(self, task):
         # update grating sections, if mouse is in their onset/offset part
@@ -498,23 +711,41 @@ class FlipTunnel:
         # change card color to indicate stimulus on
         self.card.setColor(*card_color)
 
-        # end of trial update
-        # at each end of trial (or tunnel), water reward is given
-        # if self.tunnel.end_reached and not self.tunnel.frozen:
-        #     self.tunnel.freeze(True)
-        #     self.tunnel.taskMgr.doMethodLater(
-        #         self.sleep_time, self.reset_tunnel_task, 'reset_tunnel_task'
-        #     )
-
-        # print(self.tunnel.position)
-
-        if self.tunnel.position > 90 and not self.tunnel.frozen:
+        if self.tunnel.position > self.triggeResetPosition and not self.tunnel.frozen:
             self.tunnel.freeze(True)
             self.tunnel.taskMgr.doMethodLater(
                 self.sleep_time, self.reset_tunnel_task, 'reset_tunnel_task'
             )
+            
+        if self.tunnel.position < self.triggeResetPositionStart and not self.tunnel.frozen:
+            self.tunnel.freeze(True)
+            self.tunnel.taskMgr.doMethodLater(
+                self.sleep_time, self.reset_tunnel2end_task, 'reset_tunnel2end_task'
+            )
 
         return Task.cont
+
+    def create_nidaq_controller(self, options):
+        if 'daqChannel' in options:
+            import nidaq as nidaq
+            self.valveController = nidaq.DigitalOutput(
+                options['daqChannel']['valve1'])
+            self.lickDetector = nidaq.AnalogInput(
+                **options['daqChannel']['spout1'])
+            
+            if 'airpuff' in options['daqChannel']:
+                self.airpuffController = nidaq.DigitalOutput(
+                    options['daqChannel']['airpuff'])
+                self.isAirpuff = True
+            else:
+                self.isAirpuff = False
+            
+            self.isNIDaq = True
+        else:
+            self.logger.warn("no daq channel specified, "
+                             "using default channel 0")
+            self.isNIDaq = False
+            self.isAirpuff = False
 
     def update_inputs_task(self, task):
         speed = self.tunnel.speed
@@ -527,7 +758,9 @@ class FlipTunnel:
         return Task.cont
 
     def update_piezo_task(self, task):
+
         self.isChallenged = self.lickDetector.read_float()
+        # print('self.isChallenged', self.isChallenged)
         return Task.cont
 
     def update_outputs_task(self, task):
@@ -551,96 +784,70 @@ class FlipTunnel:
 
     def run(self):
         self.tunnel.run()
+        
+    def close(self):
+        print('closing flip tunnel')
+        print(self.inputs.keys())
+        print(self.outputs.keys())
+        for input in self.inputs.values():
+            input.close()
+        for output in self.outputs.values():
+            output.close()
+        
 
 
-def make_card(tunnel, size, position):
-    """create a small dark patch to display stimulus onset"""
+    def position_logging_task(self, task):
+        if not hasattr(task, 'next_log_time'):
+            task.next_log_time = self.globalClock.getFrameTime()
 
-    card_width, card_height = size
-    card_x, card_y = position
+        current_time = self.globalClock.getFrameTime()
 
-    cm = CardMaker('card')
-    card = tunnel.render2d.attachNewNode(cm.generate())
-    card.setScale(card_width, 1, card_height)
-    card.setPos(card_x - card_width / 2, 0, card_y - card_height / 2)
-    card.setColor(0, 0, 0, 1)
-    return card
+        if current_time < task.next_log_time:
+            return Task.cont
 
+        task.next_log_time += 1.0 / 60.0  # Schedule the next log in 1/60th of a second
 
-def append_openloop_task(flip_tunnel, flip_section, speed, duration):
+        position = self.tunnel.position
+        total_run_distance = self.total_forward_run_distance + position
+        self.position_writer.writerow([self.sample_i, current_time, position, total_run_distance, ''])
+        
+        if self.wasChallenged:
+            # print("challenged")
+            self.position_writer.writerow([self.sample_i, current_time, -1, -1, "challenged"])
+            self.wasChallenged = False
 
-    logging.basicConfig()
-    logger = logging.getLogger(__name__)
+        if self.wasRewarded:
+            self.position_writer.writerow([self.sample_i, current_time, -1, -1, "rewarded"])
+            print("rewarded")                
+            self.wasRewarded = False
+            
+        if self.wasManuallyRewarded:
+            self.position_writer.writerow([self.sample_i, current_time, -1, -1, "manually-rewarded"])
+            print("mannualy rewarded")
+            self.wasManuallyRewarded = False
+            
+        if self.wasAssistRewarded:
+            self.position_writer.writerow([self.sample_i, current_time, -1, -1, "assist-rewarded"])
+            print("assist rewarded")
+            self.wasAssistRewarded = False
+            
+        self.sample_i += 1
 
-    def stop_openloop_task():
-        logger.info("stop open-loop")
-        flip_tunnel.tunnel.taskMgr.add(
-            flip_tunnel.update_inputs_task, 'update_inputs_task', sort=-10
-        )
-        return Task.done
+        return Task.cont
 
-    def start_openloop_task(stim_onset, task):
-        logger.info("start open-loop")
-        flip_tunnel.tunnel.taskMgr.remove('update_inputs_task')
-        flip_tunnel.tunnel.taskMgr.doMethodLater(
-            duration, stop_openloop_task, 'stop_openloop_task',
-            extraArgs=[]
-        )
-        flip_tunnel.tunnel.speed = speed / flip_tunnel.tunnel.speed_gain
-        return Task.done
+    # def event_logging_task(self, task):
+    #     if self.wasChallenged:
+    #         print('evemt logger was chalenged')
+    #         print([self.shared_timestamp, "challenged"])
+    #         self.position_writer.writerow([self.shared_timestamp, -1, "challenged"])
+    #         self.event_writer.writerow([self.shared_timestamp, "challenged"])
+    #         self.wasChallenged = False
 
-    for k in flip_section.triggers.keys():
-        flip_section.triggers[k].append(start_openloop_task)
+    #     if self.wasRewarded:
+    #         print('event logger was rewarded')
+    #         self.position_writer.writerow([self.shared_timestamp, -1, "rewarded"])
+    #         self.event_writer.writerow([self.shared_timestamp, "rewarded"])
+    #         print([self.shared_timestamp, "rewarded"])
+    #         self.wasRewarded = False
 
-
-def make_flip_tunnel(tunnel_options, card_options, flip_tunnel_options,
-                     walls_sequence, in_options, out_options, test_mode):
-
-    neutral_texture = flip_tunnel_options['neutral_texture']
-    default_onset = flip_tunnel_options['stimulus_onset']
-    sleep_time = flip_tunnel_options['sleep_time']
-    io_module = __import__(flip_tunnel_options['io_module'])
-
-    # create base tunnel
-    walls_textures = [
-        walls if isinstance(walls, str) else
-        walls.pop('neutral_texture', neutral_texture)
-        for walls in walls_sequence
-    ]
-    tunnel = BaseTunnel(walls_textures, test_mode=test_mode, **tunnel_options)
-
-    # create card to display stimulus onset
-    card = make_card(tunnel, **card_options)
-
-    # create objects managing flipping sections
-    flip_sections, open_loop_options = make_flip_sections(
-        tunnel, walls_sequence, default_onset, io_module
-    )
-
-    # create inputs/outputs channels
-    inputs = {k: io_module.make_input(**v) for k, v in in_options.items()}
-    outputs = {k: io_module.make_output(**v) for k, v in out_options.items()}
-
-    # create flip tunnel object
-    flip_tunnel = FlipTunnel(
-        tunnel, card, flip_sections, inputs, outputs, sleep_time, test_mode
-    )
-
-    # append more triggers for open-loop sections
-    for section, open_loop in zip(flip_sections, open_loop_options):
-        if open_loop is None:
-            continue
-        append_openloop_task(flip_tunnel, section, **open_loop)
-
-    return flip_tunnel
-
-
-if __name__ == "__main__":
-    options = default_main()
-    no_input_speed = not ('speed' in options['inputs'])
-    flip_tunnel = make_flip_tunnel(
-        options['base_tunnel'], options['card'], options['flip_tunnel'],
-        options['walls_sequence'], options['inputs'], options['outputs'],
-        test_mode=no_input_speed
-    )
-    flip_tunnel.run()
+    #     return Task.cont

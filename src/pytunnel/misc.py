@@ -3,6 +3,7 @@ from __future__ import division, print_function
 import argparse
 import logging
 from pathlib import Path
+from datetime import datetime
 
 import yaml
 from panda3d.core import loadPrcFile, Filename, getModelPath
@@ -54,8 +55,44 @@ def default_main():
         options = yaml.load(fd, Loader=yaml.SafeLoader)
     texture_path = options.pop('texture_path', None)
     if texture_path:
-        texture_path = Path(args.yaml_file).parent / texture_path
-        texture_path = Filename.fromOsSpecific(str(texture_path))
         getModelPath().appendDirectory(texture_path)
     set_root_logger(args.verbose)
     return options
+
+
+
+def save_yaml(options):
+    
+    time_now = datetime.now()
+    try:
+        options['logger']['experiment_start_time'] = time_now.strftime('%H:%M')
+        options['logger']['date_time'] = str(time_now)
+    except:
+        options['logger'] = {'experiment_start_time': time_now.strftime('%H:%M'), 'date_time': str(time_now)}
+
+    try:
+        save_dir = Path(options['logger']['foldername'])
+        save_dir.mkdir()
+        file_name = 'config.yaml'
+        file_path = str(save_dir / file_name)
+        
+        with open(file_path, 'w') as file:
+            yaml.dump(options, file)
+    except KeyError:
+        print("foldername not specified. this session will not be saved/logged...")
+        
+        
+# Define a function to clear tasks when the script exits
+def cleanup(tunnel):
+    
+    print('releasing serial ports')
+    try:
+        tunnel.close()
+    except:
+        print('failed to close serial ports or you have not implemented a close method')
+
+# Define a function to handle Ctrl+C
+def handle_ctrl_c(signum, frame, tunnel):
+    cleanup(tunnel)
+    exit(1)
+    

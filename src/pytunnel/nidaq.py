@@ -60,6 +60,13 @@ class AnalogInput:
         if self.threshold is not None:
             value = value > self.threshold
         return value
+    
+    def close(self):
+        # Call the ClearTask method to release the port
+        if self.task is not None:
+            print('closing analog input')
+            self.task.ClearTask()
+            self.task = None
 
 
 class ConstantInput:
@@ -69,6 +76,9 @@ class ConstantInput:
 
     def read_float(self):
         return self.constant_value
+    
+    def close(self):
+        pass
 
 
 class AnalogOutput:
@@ -97,6 +107,13 @@ class AnalogOutput:
         value = min(value, self.max_value)
         value = max(value, self.min_value)
         self.task.WriteAnalogScalarF64(1, -1, value, None)
+        
+    def close(self):
+        # Call the ClearTask method to release the port
+        if self.task is not None:
+            print('closing analog output')
+            self.task.ClearTask()
+            self.task = None
 
 
 class DigitalOutput:
@@ -117,6 +134,13 @@ class DigitalOutput:
 
     def stop(self):
         self.write_uint(0)
+        
+    def close(self):
+        # Call the ClearTask method to release the port
+        if self.task is not None:
+            print('closing digital output')
+            self.task.ClearTask()
+            self.task = None
 
 
 class PulseGenerator:
@@ -135,6 +159,12 @@ class PulseGenerator:
 
     def stop(self):
         self.task.StopTask()
+        
+    def close(self):
+        # Call the ClearTask method to release the port
+        if self.task is not None:
+            self.task.ClearTask()
+            self.task = None
 
 
 class AngularEncoder:
@@ -157,6 +187,12 @@ class AngularEncoder:
         self.task.ReadCounterScalarF64(-1, daq.byref(value_box), None)
         return value_box.value if value_box.value < self.error_value else 0
 
+    def close(self):
+        # Call the ClearTask method to release the port
+        if self.task is not None:
+            print('closing angular encoder')
+            self.task.ClearTask()
+            self.task = None
 
 class AngularVelocityEncoder:
 
@@ -191,3 +227,9 @@ class AngularVelocityEncoder:
             speed = 0
 
         return speed * self.gain
+
+    def close(self):
+        # Call the ClearTask method to release the port
+        if self.encoder.task is not None:
+            self.encoder.task.ClearTask()
+            self.encoder.task = None
