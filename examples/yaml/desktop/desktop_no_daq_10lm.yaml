@@ -1,0 +1,69 @@
+texture_path: examples/textures/
+
+base_tunnel:
+    speed_gain: 0.1
+    eye_fov:
+        fov: 100 
+        fov_shift: 57
+    wall_model: 'walls.egg'
+    wall_length: 4.5
+    wall_spacing: 9
+
+card:
+    size: [0.2, 0.2]
+    position: [0.9, 0.9]
+
+flip_tunnel:
+    sleep_time: 0
+    stimulus_onset: 12
+    neutral_texture: grey.png
+    io_module: nidaq_stub
+    length: 191
+    margin_start: 9
+    goals: [[12, 21], [66, 75], [173, 182]]
+    landmarks: [[12, 21], [30, 39], [48, 57], [66, 75], [84, 93], [102, 111], [120, 129], [138, 147], [156, 164], [173, 182]]
+
+monitor:
+    dual_monitor: True
+    monitor1:
+        width: 400
+    monitor2:
+        width: 400
+        height: 300
+    monitor3:
+        width: 400
+        height: 300
+
+logger:
+    filename: '/Users/sandrareinert/Documents/Code/Testing/data'
+
+sequence_task:
+    rulename: 'sequence'
+
+walls_sequence:
+  - random_dots.png
+  - logs.png
+  - random_dots.png
+  - grating1.jpg
+  - random_dots.png
+  - tiles.png
+  - random_dots.png
+  - grass.png
+  - random_dots.png
+  - big_light_rectangles.png
+  - random_dots.png
+  - honeycomb.png
+  - random_dots.png
+  - leaves.png
+  - random_dots.png
+  - waves.png
+  - random_dots.png
+  - bark.png
+  - random_dots.png
+  - big_light_circles.png
+  - random_dots.png
+
+  
+inputs: {}
+
+outputs: {}
