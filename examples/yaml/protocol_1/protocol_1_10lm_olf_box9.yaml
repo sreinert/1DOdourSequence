@@ -67,6 +67,7 @@ daqChannel:
   
 walls_sequence:
   - random_dots.png
+  - random_dots.png
   - logs.png
   - random_dots.png
   - grating1.jpg

@@ -253,7 +253,6 @@ class FlipTunnel:
         self.assist_sound_playing = False
         self.main_sound_playing = False
 
-        self.olf_stim = False
         self.odour_prepped = False
         self.olf_done = False
 
@@ -369,6 +368,8 @@ class FlipTunnel:
         if 'landmarks' in options['flip_tunnel']:
             print('using landmarks')
             self.landmarks = options['flip_tunnel']['landmarks']
+            self.LMNums = len(self.landmarks)
+            self.currentLMIdx = 0
             self.tunnel.taskMgr.add(
                 self.olfact_task, 'olfact_task'
             )
@@ -385,10 +386,9 @@ class FlipTunnel:
             pass
 
         self.odour_diffs = {
-            'odour-final': 0,
-            'final-five': 10,
-            'three-flush': 10,
-            'three': 2}
+            'final-five': 1,
+            'three-flush': 1,
+            'three': 0.2}
         
         try:
             self.odour_diffs.update(options['flip_tunnel']['odour_diffs'])
@@ -582,31 +582,22 @@ class FlipTunnel:
     
     def olfact_task(self, task):
         position = self.tunnel.position
-        landmarks = self.landmarks
-        
+        landmarks = self.landmarks[self.currentLMIdx]
         prep_index = -1
-        for index, landmark in enumerate(landmarks):
-            if position > landmark[0] - self.odour_prep_distance:
-                prep_index = index
-                break
-        if prep_index != -1 and not self.olf_stim:
-            self.olf_stim = True
-            self.prepOdourStim(odour=prep_index)
-            self.odour_prepped = True
-            prep_index = -1
-        elif prep_index == -1 and self.olf_stim:
-            self.stop_five_valve()
-
-       
-        if self.checkWithinLandmark() and self.odour_prepped:
-            self.triggerOdourOn()
-            self.olf_done = True
-
         
-        if self.olf_done:
-            self.flush_odour()
-            print('finished odour presentation')
-            self.olf_done = False
+        if not self.odour_prepped:
+            self.prepOdourStim(odour=self.currentLMIdx)
+            self.odour_prepped = True
+
+        if position > landmarks[0] and position < landmarks[1]:
+            prep_index = self.currentLMIdx
+
+        if prep_index != -1 and not self.olf_done:
+            self.olf_done = True
+            self.triggerOdourOn(odour=prep_index)
+            self.flush_odour(odour=self.currentLMIdx)
+            self.handleNextLM()
+            prep_index = -1
         
         return Task.cont
         
@@ -705,7 +696,6 @@ class FlipTunnel:
             self.tunnel.taskMgr.doMethodLater(
                         time_diff, self.start_five_valve, 'start_five_valve'
                     )
-            self.olf_stim = False
         else:
             print(self.tunnel.position)
             print('prepping odour {}'.format(odour))
@@ -717,13 +707,12 @@ class FlipTunnel:
         if self.isNIDaq:
 
             self.threevalvecontroller.start()
-            
+            print(self.tunnel.position)
+            print('odour {} is triggered'.format(odour))
+            print('closing after {}'.format(self.odour_diffs['three']))
             self.tunnel.taskMgr.doMethodLater(
                         self.odour_diffs['three'], self.stop_three_valve, 'stop_three_valve'
-                    )
-            print(self.tunnel.position)
-            print('odour is triggered, odour valve closed')
-            
+                    )     
         else:
             print(self.tunnel.position)
             print('triggering odour stimulation for {}'.format(self.odour_diffs['three']))
@@ -739,32 +728,37 @@ class FlipTunnel:
         self.fivevalvecontroller.stop()
         print('closing final valve')
         self.finalvalvecontroller.stop()
-        self.olf_stim = False
     
     def stop_three_valve(self,odour):
         print('closing 3way valve')
         self.threevalvecontroller.stop()
         if odour == 0:
             self.odourcontroller1.stop()
+            print('closing odour {}'.format(odour))
         elif odour == 1:
             self.odourcontroller2.stop()
+            print('closing odour {}'.format(odour))
         elif odour == 2:
             self.odourcontroller3.stop()
+            print('closing odour {}'.format(odour))
         elif odour == 3:
             self.odourcontroller4.stop()
+            print('closing odour {}'.format(odour))
         elif odour == 4:
             self.odourcontroller5.stop()
+            print('closing odour {}'.format(odour))
         elif odour == 5:
             self.odourcontroller6.stop()
+            print('closing odour {}'.format(odour))
         
 
     def flush_odour(self,odour):
-        print('flushing tubing')
+        print('flushing tubing for {}'.format(self.odour_diffs['three-flush']))
         self.tunnel.taskMgr.doMethodLater(
                         self.odour_diffs['three-flush'], self.stop_five_valve, 'stop_five_valve'
                     )
         self.olf_done = False
-        self.olf_stim = False
+        self.odour_prepped = False
 
     def triggerAirpuff(self):
         if self.isNIDaq:
@@ -833,16 +827,17 @@ class FlipTunnel:
         
     def checkWithinLandmark(self):
         if self.ruleName in ['sequence', 'audio-guided-sequence', 'protocol5_lv3']:
-            landmarks = self.landmarks[self.current_landmark]
+            landmarks = self.landmarks[self.currentLMIdx]
             position = self.tunnel.position
             if position > landmarks[0] and position < landmarks[1]:
                 return True
             return False
-        elif self.ruleName in ['all']:
+        elif self.ruleName in ['olfactory_support']:
             position = self.tunnel.position
-            for landmarks in self.landmarks:
-                if position > landmarks[0] and position < landmarks[1]:
-                    return True
+            landmarks = self.landmarks[self.currentLMIdx]
+            if position > landmarks[0] and position < landmarks[1]:
+                print('landmark {} detected'.format(self.currentLMIdx))
+                return True
             return False
         elif self.ruleName in ['protocol1_lv2']:
             position = self.tunnel.position
@@ -887,6 +882,13 @@ class FlipTunnel:
                 self.currentGoal += self.flip_tunnel_options['reward_distance']
             self.currentGoal -= self.flip_tunnel_options['reward_distance']
             print('next goal is set to {}'.format(self.currentGoal))
+    
+    def handleNextLM(self):
+        if self.ruleName in ['olfactory_support']:
+            self.currentLMIdx = (self.currentLMIdx + 1) % self.LMNums
+            print('next landmark is set to {}'.format(self.currentLMIdx))
+
+
 
     def reset_tunnel_task(self, task):
         self.current_flip_sections = []
