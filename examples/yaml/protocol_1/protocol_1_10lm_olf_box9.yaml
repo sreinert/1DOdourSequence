@@ -1,7 +1,7 @@
 texture_path: examples/textures/
 
 base_tunnel:
-    speed_gain: 0.4
+    speed_gain: 1.8 # 12,10,11 set to 2.2, 6,7 to  2, 1.8 for 12
     eye_fov:
         fov: 100 
         fov_shift: 57
@@ -18,19 +18,85 @@ flip_tunnel:
     stimulus_onset: 12
     neutral_texture: grey.png
     io_module: nidaq
-    length: 182
+    length: 288
     margin_start: 9
     reward_distance: 9
     reward_length:
-        manual: 0.2
+        manual: 0.1
         correct: 0.3
-        assist: 0.2
+        assist: 0.3
         wrong: 0.3
-    goals: [[30, 39], [138, 147], [84, 93], [66, 75]]
-    # assisted_goals: [[30, 39], [138, 147], [84, 93], [66, 75]]
-    # landmarks: [[12, 21], [30, 39], [48, 57], [66, 75], [84, 93], [102, 111], [120, 129], [138, 147], [156, 164], [173, 182]]
-    landmarks: [[30, 39], [84, 93], [102, 111], [120, 129], [138, 147], [156, 164]]
+    reward_prob: 1
+    # goals: [[47, 63],[209, 225], [128, 144],[101, 117]] # 2 8 5 4, Mouse 6,8,10,12
+    # assisted_goals: [[52, 53], [214, 215], [133, 134], [106, 107]]
+    # goals: [[74, 90], [263, 279], [155, 171], [182, 198]] # 3 10 6 7, Mouse 7,9,11,13 (added 2 everywhere)
+    # assisted_goals: [[79, 80], [268, 269], [160, 161], [187, 188]]
+    # goals: [[49, 63], [103, 117], [158, 171], [211, 225]] # 2 4 6 8,  simple sequence test
+    # assisted_goals: [[54, 55], [108, 109], [162, 163], [216, 217]]
+    # goals: [[76, 90], [211, 225], [130, 144], [265, 279]] # 3 8 5 10,  2nd seq 
+    # assisted_goals: [[81, 82], [216, 217], [135, 136], [270, 271]] 
+    # goals: [[157, 171], [184, 198], [103, 117], [49, 63]] # 6 7 4 2,  3rd seq (11)
+    # assisted_goals: [[162, 163], [189, 190], [108, 109], [54, 55]] 
+    # goals: [[157, 171], [265, 279],[76, 90], [22, 36]] # 6 9 3 0,  3rd seq (10)
+    # assisted_goals: [[162, 163], [270, 271], [81, 82],[27, 28]] 
+    # goals: [[184, 198], [265, 279],[103, 117], [22, 36]] # 6 9 3 0,  3rd seq (7,12)
+    # assisted_goals: [[189, 190], [270, 271], [108, 109],[27, 28]] 
+    # goals: [[22, 36], [238, 252], [184, 198], [130, 144]] # 0 8 6 4,  4th seq (6,11)
+    # assisted_goals: [[27, 28], [243, 244], [189, 190],[135, 136]] 
+    # goals: [[49, 63], [211, 225], [184, 198], [130, 144]] # 1 7 6 4,  4th seq (7,12)
+    # assisted_goals: [[54, 55], [214, 215], [189, 190],[135, 136]] 
+    # goals: [[211, 225], [103, 117],[76, 90], [238, 252]] # 7 3 2 8,  5th seq (11)
+    # assisted_goals: [[214, 215],[108, 109],[81, 82],[243, 244]] 
+    # goals: [[265, 279],[49, 63], [22, 36],[211, 225]] # 9 1 0 7 random seq 1 (6)
+    # goals: [[211, 225],[157, 171], [265, 279],[130, 144]] # 7 5 9 4 random seq 1 (7)
+    # goals: [[22, 36],[211, 225],  [184, 198],[265, 279]] # 0 7 6 9 random seq 1 (10)
+    # goals: [[157, 171],[76, 90],[130, 144],[184, 198]] # 5 2 4 6 random seq 1 (11)
+    # goals: [[130, 144],[211, 225],[49, 63], [103, 117]] # 4 7 1 3 random seq 1 (12)
+    # goals: [[22, 36],[238, 252],[76, 90],[184, 198]] # 0 8 2 6 random seq 2 (6)
+    # goals: [[103, 117],[238, 252], [265, 279],[184, 198]] # 3 8 9 6 random seq 2 (7)
+    # goals: [[184, 198],[238, 252],  [130, 144],[76, 90]] # 6 8 4 2 random seq 2 (10)
+    # goals: [[130, 144],[157, 171],[238, 252],[76, 90]] # 4 5 8 2 random seq 2 (11)
+    # goals: [[49, 63],[238, 252],[22, 36], [211, 225]] # 1 8 0 7 random seq 2 (12)
+    # goals: [[238, 252],[76, 90],[265, 279],[49, 63]] # 8 2 9 1 random seq 3 (6)
+    # goals: [[49, 63],[22, 36],[130, 144],[211, 225]] # 1 0 4 7 random seq 3 (7)
+    # goals: [[265, 279],[103, 117],[238, 252],[130, 144]] # 9 3 8 4 random seq 3 (10)
+    # goals: [[76, 90],[238, 252],[157, 171],[211, 225]] # 2 8 5 7 random seq 3 (11)
+    # goals: [[157, 171],[103, 117],[22, 36], [238, 252],] # 5 3 0 8 random seq 3 (12)
+    # goals: [[22, 36],[211, 225],[157, 171],[130, 144]] # 0 7 5 4 random seq 3 (6)
+    # goals: [[22, 36],[76, 90],[265, 279],[184, 198]] # 0 2 9 6 random seq 3 (7)
+    # goals: [[49, 63],[76, 90],[130, 144],[211, 225]] # 1 2 4 7 random seq 3 (10)
+    # goals: [[157, 171],[103, 117],[22, 36],[265, 279]] # 5 3 0 9 random seq 3 (11)
+    # goals: [[184, 198],[130, 144],[157, 171], [238, 252]] # 6 4 5 8 random seq 3 (12)
+    # goals: [[76, 90],[265, 279],[157, 171],[103, 117]] # 2 9 5 3 random seq 3 (6)
+    # goals: [[49, 63],[238, 252],[157, 171],[76, 90]] # 1 8 5 2 random seq 3 (7)
+    # goals: [[184, 198],[103, 117],[238, 252],[76, 90]] # 6 3 8 2 random seq 3 (10)
+    # goals: [[157, 171],[22, 36],[238, 252],[265, 279]] # 5 0 8 9 random seq 3 (11)
+    # goals: [[49, 63],[130, 144],[265, 279], [76, 90]] # 1 4 9 2 random seq 3 (12)
+    # goals: [[265, 279],[22, 36],[157, 171],[211, 225]] # 9 0 5 7 random seq 3 (6)
+    # goals: [[184, 198],[22, 36],[76, 90],[49, 63]] # 6 0 2 1 random seq 3 (7)
+    # goals: [[265, 279],[211, 225],[238, 252],[49, 63]] # 9 7 8 1 random seq 3 (10)
+    # goals: [[22, 36],[184, 198],[265, 279],[157, 171]] # 0 6 9 5 random seq 3 (11)
+    # goals: [[76, 90],[22, 36],[184, 198],[211, 225]] # 3 0 6 7 random seq 3 (12)
+    # goals: [[76, 90],[49, 63],[22, 36],[130, 144]] # 2 1 0 4 random seq 3 (6)
+    # goals: [[130, 144],[184, 198],[238, 252],[211, 225]] # 4 6 8 7 random seq 3 (7)
+    # goals: [[49, 63],[157, 171],[22, 36],[211, 225]] # 1 5 0 7 random seq 3 (10)
+    # goals: [[76, 90],[157, 171],[265, 279],[103, 117]] # 2 5 9 3 random seq 3 (11)
+    goals: [[238, 252],[76, 90],[184, 198],[103, 117]] # 8 2 6 3 random seq 3 (12)
+    # landmarks: [[21, 30], [39, 48], [57, 66], [75, 84], [93, 102], [111, 120], [129, 138], [147, 156], [164, 173], [182, 191]]
+    landmarks: [[20, 36], [47, 63], [74, 90], [101, 117], [128, 144], [155, 171], [182, 198], [209, 225], [236, 252], [263, 279]]
     manual_reward_with_space: True
+    sound_dir: 'examples/sounds/'
+    sounds:
+        0: '6kHz_tone.ogg'
+    sound_at_A: True
+    reward_tone_length: 1
+    speed_limit:  9 #cm/s set to -1 to disable, 6 for now, try 12 as well set to 8
+    modd1_odours: [1, 3, 5, 7, 9]
+    odour_diffs:
+        flush_same: 1.5
+        flush_other: 0.75
+        flush: 1
+        odour_overlap: 0.05
 
 monitor:
     dual_monitor: True
@@ -43,9 +109,9 @@ monitor:
         width: 1920
         height: 1080
 
-# logger:
-#     foldername: 'D:\2024\sandra\sample\test1'
-#     box_number: '9'
+logger:
+    foldername: 'D:\2024\sandra\SR_0000012\241119_2'
+    box_number: '9'
 
 sequence_task:
     rulename: 'olfactory_support'
@@ -53,41 +119,61 @@ sequence_task:
 
 daqChannel:
   valve1: Dev1/port0/line1
-  spout1: {chan: Dev1/ai10, min_value: 0, max_value: 10, threshold: 0.07}
-  odour1: Dev1/port0/line5
-  odour2: Dev1/port0/line2
-  odour3: Dev1/port0/line7
-  odour4: Dev1/port0/line3
-  odour5: Dev1/port0/line4
-  odour6: Dev1/port0/line0
-  finalV: Dev1/port1/line0 #final valve
-  fiveV: Dev1/port1/line1 #5way
-  threeV: Dev1/port1/line2 #3way
+  spout1: {chan: Dev1/ai10, min_value: 0, max_value: 10, threshold: 1} #was 0.07
+  odour1: Dev1/port2/line4 
+  odour2: Dev1/port0/line4 
+  odour3: Dev1/port1/line7 
+  odour4: Dev1/port0/line7 
+  odour5: Dev1/port1/line6 
+  odour6: Dev1/port0/line2 
+  odour7: Dev1/port2/line5 
+  odour8: Dev1/port0/line3 
+  odour9: Dev1/port1/line4 
+  odour10: Dev1/port0/line5 
+  mo1: Dev1/port0/line0
+  mo2: Dev1/port2/line6
+  finalV1: Dev1/port1/line0 #final valve modd 1
+  finalV2: Dev1/port1/line3 #final valve modd 2
+  fiveV: Dev1/port1/line1 #5way (switch between modd 1 and 2) -> removed, only for flow calib
+  threeV: Dev1/port1/line2 #3way 1
+  threeV2: Dev1/port2/line3 #3way 2
 
   
 walls_sequence:
   - random_dots.png
   - random_dots.png
+  - random_dots.png
+  - logs.png
   - logs.png
   - random_dots.png
   - grating1.jpg
+  - grating1.jpg
   - random_dots.png
   - tiles.png
-  - random_dots.png
-  - grass.png
+  - tiles.png
   - random_dots.png
   - big_light_rectangles.png
+  - big_light_rectangles.png
   - random_dots.png
-  - honeycomb.png
+  - grass.png
+  - grass.png
   - random_dots.png
+  - big_dark_rectangles.png
+  - big_dark_rectangles.png
+  - random_dots.png
+  - leaves.png
   - leaves.png
   - random_dots.png
   - waves.png
+  - waves.png
   - random_dots.png
+  - bark.png
   - bark.png
   - random_dots.png
   - big_light_circles.png
+  - big_light_circles.png
   - random_dots.png
+
   
 inputs: 
     speed: {chan: Dev1/ctr0, diameter: 0.197, pulses_per_rev: 1000, error_value: 4000000000, threshold: 0.001}

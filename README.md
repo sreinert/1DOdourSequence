@@ -1,8 +1,8 @@
 # Pytunnel package
-cd X:\src\srcMaNa_20230517_1DSequence\1DSequenceTaskPy
-cd Y:\src\srcMaNa_20230517_1DSequence\1DSequenceTaskPy
-
-python src\pytunnel\main.py examples\yaml\protocol_2\protocol_2_level_2_box10.yaml
+Y:\public\projects\SaRe_20240219_hfs\1DSequenceTaskPy_sandra
+python src\pytunnel\valve_calibration.py
+python src\pytunnel\main.py examples\yaml\olf_shaping\olf_shaping1_task.yaml
+python src\pytunnel\main.py examples\yaml\protocol_1\protocol_1_10lm_olf_box9.yaml
 
 ## Introduction
 

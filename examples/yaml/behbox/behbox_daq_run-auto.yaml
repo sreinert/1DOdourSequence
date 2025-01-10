@@ -1,7 +1,7 @@
 texture_path: examples/textures/
 
 base_tunnel:
-    speed_gain: 0.4
+    speed_gain: 1
     eye_fov:
         fov: 100 
         fov_shift: 66
@@ -35,15 +35,15 @@ monitor:
         width: 1920
         height: 1080
 
-# logger:
-#     foldername: 'D:\masahiro\MN_1133271\230726'
+logger:
+    foldername: 'D:\2024\sandra\SR_00000011\240701aut'
     
 sequence_task:
     rulename: 'run-auto'
 
 daqChannel:
   valve1: Dev1/port0/line1
-  spout1: {chan: Dev1/ai10, min_value: 0, max_value: 10, threshold: 0.1}
+  spout1: {chan: Dev1/ai10, min_value: 0, max_value: 10, threshold: 0.07}
   
 walls_sequence:
   - random_dots.png
